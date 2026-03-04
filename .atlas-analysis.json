@@ -1,0 +1,138 @@
+{
+  "projectType": "framework",
+  "projectName": "Agent Teams Lite",
+  "projectDescription": "Spec-Driven Development with AI Sub-Agents - An orchestrator + 9 specialized sub-agents for structured feature development using pure Markdown.",
+  "theme": "aspen",
+  "primaryColor": "#b38135",
+  "lightColor": "#dad6d3",
+  "darkColor": "#448ce0",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "how-it-works"
+            ]
+          },
+          {
+            "group": "Installation",
+            "pages": [
+              "installation/overview",
+              "installation/claude-code",
+              "installation/opencode",
+              "installation/gemini-cli",
+              "installation/codex",
+              "installation/vscode",
+              "installation/antigravity",
+              "installation/cursor"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/workflow",
+              "guides/persistence",
+              "guides/delta-specs",
+              "guides/tdd-workflow"
+            ]
+          },
+          {
+            "group": "Commands",
+            "pages": [
+              "commands/overview",
+              "commands/sdd-init",
+              "commands/sdd-explore",
+              "commands/sdd-new",
+              "commands/sdd-continue",
+              "commands/sdd-ff",
+              "commands/sdd-apply",
+              "commands/sdd-verify",
+              "commands/sdd-archive"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Sub-Agents",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "sub-agents/architecture",
+              "sub-agents/result-contract"
+            ]
+          },
+          {
+            "group": "Agent Reference",
+            "pages": [
+              "sub-agents/init",
+              "sub-agents/explorer",
+              "sub-agents/proposer",
+              "sub-agents/spec-writer",
+              "sub-agents/designer",
+              "sub-agents/task-planner",
+              "sub-agents/implementer",
+              "sub-agents/verifier",
+              "sub-agents/archiver"
+            ]
+          },
+          {
+            "group": "Conventions",
+            "pages": [
+              "sub-agents/persistence-contract",
+              "sub-agents/engram-convention",
+              "sub-agents/openspec-convention"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Skills API",
+            "pages": [
+              "api/skill-format",
+              "api/orchestrator-api"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Agent-team orchestration pattern with delegate-only coordinator",
+    "9 specialized sub-agents for structured feature development",
+    "Pluggable artifact storage (engram, openspec, none)",
+    "Zero dependencies - pure Markdown skills",
+    "DAG-based phase orchestration with parallel execution",
+    "Delta specs for incremental requirements changes",
+    "TDD workflow support in implementer v2.0",
+    "Real test execution and spec compliance verification in verifier v2.0",
+    "Works with Claude Code, OpenCode, Cursor, Gemini CLI, VS Code Copilot, and more"
+  ],
+  "publicApiSurface": [
+    "/sdd-init - Initialize SDD context and detect project stack",
+    "/sdd-explore <topic> - Investigate ideas without creating files",
+    "/sdd-new <name> - Start a new change with exploration and proposal",
+    "/sdd-continue - Run next dependency-ready phase via sub-agents",
+    "/sdd-ff <name> - Fast-forward planning (proposal → specs → design → tasks)",
+    "/sdd-apply - Implement tasks in batches with progress tracking",
+    "/sdd-verify - Validate implementation against specs",
+    "/sdd-archive - Close change and merge delta specs",
+    "sdd-init/SKILL.md - Init sub-agent skill",
+    "sdd-explore/SKILL.md - Explorer sub-agent skill",
+    "sdd-propose/SKILL.md - Proposer sub-agent skill",
+    "sdd-spec/SKILL.md - Spec Writer sub-agent skill",
+    "sdd-design/SKILL.md - Designer sub-agent skill",
+    "sdd-tasks/SKILL.md - Task Planner sub-agent skill",
+    "sdd-apply/SKILL.md - Implementer sub-agent skill (v2.0 with TDD)",
+    "sdd-verify/SKILL.md - Verifier sub-agent skill (v2.0 with real test execution)",
+    "sdd-archive/SKILL.md - Archiver sub-agent skill"
+  ]
+}
