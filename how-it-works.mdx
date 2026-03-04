@@ -7,7 +7,7 @@ Agent Teams Lite uses a delegate-only orchestrator pattern where the main agent 
 
 ## Architecture Overview
 
-```
+```text
 ┌──────────────────────────────────────────────────────────┐
 │  ORCHESTRATOR (your main agent — gentleman, default, etc) │
 │                                                           │
@@ -63,7 +63,7 @@ graph TB
     style proposal fill:#4CAF50,stroke:#333,color:#fff
     style tasks fill:#2196F3,stroke:#333,color:#fff
     style verify fill:#FF9800,stroke:#333,color:#fff
-```
+```text
 
 ### Phase Dependencies
 
@@ -107,7 +107,7 @@ The **Task Planner** reads both specs and design to create a phased, numbered ta
 - 2.1 Create ThemeToggle component
 - 2.2 Add toggle to header
 - 2.3 Wire up context provider
-```
+```text
 
 Tasks are small enough to complete in one session.
 </Step>
@@ -169,7 +169,7 @@ Each sub-agent returns a structured JSON envelope to the orchestrator:
   "next_recommended": ["tasks"],
   "risks": ["optional risk list"]
 }
-```
+```text
 
 <CardGroup cols={2}>
   <Card title="executive_summary" icon="message">
@@ -206,7 +206,7 @@ Orchestrator determines which sub-agent(s) to launch based on:
 <Step title="Launch sub-agent(s)">
 For tools with Task tool (Claude Code, OpenCode):
 
-```
+```text
 Task(
   subagent_type: 'general',
   prompt: 'Read and follow ~/.claude/skills/sdd-propose/SKILL.md
@@ -218,7 +218,7 @@ Task(
   
   Execute the proposer phase and return a structured result envelope.'
 )
-```
+```text
 
 For tools without Task tool (Cursor, Gemini CLI):
 - Read the skill file inline
@@ -242,20 +242,20 @@ Sub-agent returns the result envelope:
   ],
   "next_recommended": ["specs", "design"]
 }
-```
+```text
 </Step>
 
 <Step title="Show summary to user">
 Orchestrator displays the executive summary:
 
-```
+```text
 ✓ Created proposal for dark mode feature
   Approach: CSS variables + React Context
   Estimated effort: 2-3 hours
   No breaking changes
 
 Want me to continue with specs and design?
-```
+```text
 
 User can:
 - Approve and continue
@@ -267,7 +267,7 @@ User can:
 <Step title="Track state">
 Orchestrator updates its internal state:
 
-```
+```text
 Change: add-dark-mode
 Artifacts:
   ✓ exploration (engram #xyz789)
@@ -276,7 +276,7 @@ Artifacts:
   ⏸ design (ready to run)
   🔒 tasks (blocked: needs specs + design)
   🔒 apply (blocked: needs tasks)
-```
+```text
 
 It knows specs and design can run in parallel because their dependencies are met.
 </Step>
@@ -296,7 +296,7 @@ BOTH depend only on proposal
 → Wait for both to complete
 → Show both summaries
 → Continue to tasks (which needs both)
-```
+```text
 
 ```markdown Multiple Explores (parallel)
 When investigating multiple domains:
@@ -305,7 +305,7 @@ When investigating multiple domains:
 → Launch Explorer sub-agent for "UI" (at the same time)
 → Wait for all to complete
 → Synthesize findings
-```
+```text
 
 </CodeGroup>
 
@@ -330,14 +330,14 @@ Artifacts persist to [Engram](https://github.com/gentleman-programming/engram), 
 6. Later phases retrieve artifacts by `topic_key`
 
 **Naming convention:**
-```
+```text
 sdd/{change-name}/{artifact-type}
 
 Examples:
   sdd/add-dark-mode/proposal
   sdd/add-dark-mode/specs
   sdd/add-dark-mode/design
-```
+```text
 
 **Advantages:**
 
@@ -367,7 +367,7 @@ Artifacts persist as Markdown files in an `openspec/` directory.
 5. Later phases read files from disk
 
 **Directory structure:**
-```
+```text
 openspec/
 ├── config.yaml              ← Project context (stack, conventions)
 ├── specs/                   ← Source of truth (current behavior)
@@ -382,7 +382,7 @@ openspec/
     │   └── tasks.md
     └── archive/             ← Completed changes
         └── 2026-03-04-fix-auth/
-```
+```text
 
 **Advantages:**
 - Version control friendly (all artifacts in git)
@@ -461,12 +461,13 @@ All 9 sub-agents reference three shared convention files to ensure consistent be
 
 ## TDD Workflow (v2.0)
 
-The **Implementer** sub-agent supports an optional Test-Driven Development workflow:
+The **Implementer** sub-agent supports an optional Test-Driven Development workflow. When enabled, it follows the RED-GREEN-REFACTOR cycle:
 
-<Steps>
+1. **RED** - Write a failing test first that describes expected behavior from spec scenarios
+2. **GREEN** - Write minimum code needed to make the test pass
+3. **REFACTOR** - Clean up structure, naming, and remove duplication while keeping tests passing
 
-<Step title="Enable TDD mode">
-Configure TDD in `openspec/config.yaml`:
+Enable TDD mode in `openspec/config.yaml`:
 
 ```yaml
 rules:
@@ -475,49 +476,17 @@ rules:
     test_command: npm test
 ```
 
-Or let the implementer detect it from your codebase (test files alongside source).
-</Step>
+Or let the implementer detect it from your codebase (test files alongside source). This cycle repeats for every task, ensuring test coverage grows with implementation.
 
-<Step title="RED: Write failing test">
-For each task, the implementer writes a test FIRST that describes the expected behavior from the spec scenarios:
-
-```typescript
-// src/theme/ThemeContext.test.ts
-test('provides theme value from context', () => {
-  const { result } = renderHook(() => useTheme());
-  expect(result.current.theme).toBe('light');
-});
-```
-
-Then runs tests to confirm it FAILS (proving the test is meaningful).
-</Step>
-
-<Step title="GREEN: Implement minimum code">
-Writes ONLY the code needed to make the test pass:
-
-```typescript
-// src/theme/ThemeContext.tsx
-export const ThemeContext = createContext({ theme: 'light' });
-export const useTheme = () => useContext(ThemeContext);
-```
-
-Runs tests to confirm they PASS.
-</Step>
-
-<Step title="REFACTOR: Clean up">
-Improves structure, naming, removes duplication. Runs tests again to confirm they STILL PASS.
-</Step>
-
-</Steps>
-
-This cycle repeats for every task, ensuring test coverage grows with implementation.
+<Info>
+See the [TDD Workflow Guide](/guides/tdd-workflow) for detailed examples and best practices.
+</Info>
 
 ## Verification (v2.0)
 
 The **Verifier** sub-agent performs real test execution:
 
 <Steps>
-
 <Step title="Run test suite">
 Executes your project's test command:
 
@@ -549,7 +518,7 @@ Maps each requirement from the specs to test results:
 - **SUGGESTION** — Nice-to-have improvement
 
 Example:
-```
+```text
 ## Verification Report
 
 **Status**: PASSED with warnings
@@ -565,7 +534,6 @@ Example:
 - Consider testing theme toggle keyboard accessibility (WCAG 2.1)
 ```
 </Step>
-
 </Steps>
 
 ## What's Next?
