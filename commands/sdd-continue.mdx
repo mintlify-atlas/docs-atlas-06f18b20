@@ -1,0 +1,322 @@
+---
+title: /sdd-continue
+description: Run the next dependency-ready phase in the SDD workflow
+---
+
+## Overview
+
+The `/sdd-continue` command analyzes the current change state and launches the next appropriate sub-agent based on the dependency graph. It's designed for step-by-step progression through the SDD workflow.
+
+<Info>
+This command is smart - it detects which artifacts exist and determines the next phase automatically.
+</Info>
+
+## Usage
+
+```bash
+/sdd-continue [change-name]
+```
+
+<ParamField path="change-name" type="string">
+  Optional. The change to continue. If omitted, continues the most recent active change.
+</ParamField>
+
+## What It Does
+
+### 1. Checks Current State
+
+Scans for existing artifacts:
+- ✓ `proposal.md` exists?
+- ✓ `specs/` directory with spec files?
+- ✓ `design.md` exists?
+- ✓ `tasks.md` exists?
+- ✓ Tasks marked complete?
+- ✓ Verification report exists?
+
+### 2. Determines Next Phase
+
+Follows the dependency graph:
+
+```
+proposal → [specs ∥ design] → tasks → apply → verify → archive
+```
+
+- If only `proposal.md` exists → Launch **specs** and **design** sub-agents in parallel
+- If specs + design exist → Launch **tasks** sub-agent
+- If tasks exist but incomplete → Launch **apply** sub-agent
+- If all tasks complete → Launch **verify** sub-agent
+- If verification passed → Launch **archive** sub-agent
+
+### 3. Launches Appropriate Sub-Agent
+
+Delegates to the next phase with fresh context:
+- Reads all prerequisite artifacts
+- Executes phase-specific work
+- Returns structured result
+
+### 4. Reports Progress
+
+Shows:
+- Phase completed
+- Artifacts created
+- Next recommended action
+
+## Example Usage
+
+### Continuing from Proposal to Specs
+
+```bash
+# After /sdd-new add-dark-mode and reviewing the proposal:
+/sdd-continue
+```
+
+**Output:**
+
+```markdown
+## Analyzing current state...
+
+✓ Proposal exists: add-dark-mode
+✓ Next phase: specs + design (parallel)
+
+---
+
+## Launching spec writer sub-agent...
+
+✓ specs/ui/theme-toggle.md created
+  - 3 requirements (MUST: 2, SHOULD: 1)
+  - 7 scenarios (Given/When/Then format)
+
+✓ specs/core/theme-system.md created
+  - 4 requirements (MUST: 3, SHOULD: 1)
+  - 9 scenarios
+
+---
+
+## Launching designer sub-agent...
+
+✓ design.md created
+  - Component architecture (ThemeProvider, useTheme hook)
+  - CSS variable naming convention
+  - localStorage schema
+  - System preference detection strategy
+  - Sequence diagram for theme switching
+
+---
+
+### Artifacts Created
+- openspec/changes/add-dark-mode/specs/ui/theme-toggle.md
+- openspec/changes/add-dark-mode/specs/core/theme-system.md
+- openspec/changes/add-dark-mode/design.md
+
+### Next Step
+Run `/sdd-continue` to generate implementation tasks.
+```
+
+### Continuing from Specs to Tasks
+
+```bash
+/sdd-continue
+```
+
+**Output:**
+
+```markdown
+## Analyzing current state...
+
+✓ Proposal exists
+✓ Specs exist (2 files, 11 scenarios)
+✓ Design exists
+✓ Next phase: tasks
+
+---
+
+## Launching task planner sub-agent...
+
+✓ tasks.md created
+  - Phase 1: Foundation (3 tasks)
+  - Phase 2: Implementation (4 tasks)
+  - Phase 3: Testing & Polish (2 tasks)
+  - Total: 9 tasks
+
+---
+
+### Artifacts Created
+- openspec/changes/add-dark-mode/tasks.md
+
+### Next Step
+Review tasks.md, then run `/sdd-apply` to start implementation.
+```
+
+### Continuing to Implementation
+
+```bash
+/sdd-continue
+```
+
+**Output:**
+
+```markdown
+## Analyzing current state...
+
+✓ Proposal, specs, design, tasks all exist
+✓ Tasks: 0/9 complete
+✓ Next phase: apply
+
+---
+
+## Launching implementer sub-agent...
+
+Implementing Phase 1: Foundation
+
+✓ 1.1 Create ThemeContext and provider
+  - Created src/context/ThemeContext.tsx (87 lines)
+  - Includes theme state, persistence, system detection
+
+✓ 1.2 Add CSS custom properties
+  - Modified src/styles/globals.css
+  - Added --color-* variables for light/dark modes
+
+✓ 1.3 Wrap app with ThemeProvider
+  - Modified src/components/Layout.tsx
+  - Added theme class to root element
+
+---
+
+Phase 1 complete (3/9 tasks done).
+Continue with Phase 2? (or run /sdd-continue again)
+```
+
+## Dependency Graph
+
+The command follows this exact progression:
+
+<Steps>
+  <Step title="Proposal">
+    Created by `/sdd-new`. Must exist before anything else.
+  </Step>
+  <Step title="Specs + Design (Parallel)">
+    Both can run simultaneously. No dependency between them.
+  </Step>
+  <Step title="Tasks">
+    Requires both specs AND design to be complete.
+  </Step>
+  <Step title="Apply">
+    Requires tasks. Implements code iteratively.
+  </Step>
+  <Step title="Verify">
+    Requires all tasks complete. Validates implementation.
+  </Step>
+  <Step title="Archive">
+    Requires successful verification. Closes the cycle.
+  </Step>
+</Steps>
+
+## When to Use
+
+<CardGroup cols={2}>
+  <Card title="Deliberate Progress" icon="shoe-prints">
+    When you want to review artifacts between phases
+  </Card>
+  <Card title="Checkpoint Reviews" icon="checkpoint">
+    Pause for feedback after each phase
+  </Card>
+  <Card title="Learning the Flow" icon="graduation-cap">
+    First time using SDD - see each phase individually
+  </Card>
+  <Card title="Collaborative Work" icon="users">
+    Multiple people reviewing artifacts before proceeding
+  </Card>
+</CardGroup>
+
+<Tip>
+Use `/sdd-ff` instead of repeated `/sdd-continue` if you want to fast-forward through planning phases.
+</Tip>
+
+## State Detection
+
+The orchestrator checks for artifacts in this order:
+
+<Accordion title="openspec mode">
+  ```
+  openspec/changes/{change-name}/
+  ├── proposal.md       ← Phase 1
+  ├── specs/            ← Phase 2a
+  │   └── *.md
+  ├── design.md         ← Phase 2b
+  └── tasks.md          ← Phase 3
+  ```
+  
+  Reads files to determine completion.
+</Accordion>
+
+<Accordion title="engram mode">
+  ```
+  sdd/{change-name}/proposal    ← Phase 1
+  sdd/{change-name}/spec        ← Phase 2a
+  sdd/{change-name}/design      ← Phase 2b
+  sdd/{change-name}/tasks       ← Phase 3
+  ```
+  
+  Searches Engram observations by topic_key.
+</Accordion>
+
+<Accordion title="none mode">
+  Tracks state in orchestrator memory only.
+  Not persistent across sessions.
+</Accordion>
+
+## Parallel Phase Execution
+
+When continuing from proposal, `/sdd-continue` launches **specs** and **design** sub-agents in parallel:
+
+```
+proposal.md exists
+       │
+       ├──→ specs sub-agent   } 
+       │                       }→  Both run simultaneously
+       └──→ design sub-agent  }
+       │
+    (wait for both)
+       │
+       ↓
+  tasks sub-agent
+```
+
+This saves time since specs and design have no dependency on each other.
+
+## Error Handling
+
+<Warning>
+If no active change is found:
+```
+❌ No active SDD change found.
+Run /sdd-new <name> to start a change, or specify: /sdd-continue <change-name>
+```
+</Warning>
+
+<Warning>
+If multiple changes are active:
+```
+⚠️  Multiple active changes found:
+  - add-dark-mode (at tasks phase)
+  - fix-auth-bug (at apply phase)
+
+Specify which to continue: /sdd-continue <change-name>
+```
+</Warning>
+
+<Warning>
+If change is already complete:
+```
+✓ Change "add-dark-mode" is complete and verified.
+Run /sdd-archive to close and archive this change.
+```
+</Warning>
+
+## Related Commands
+
+- [/sdd-new](/commands/sdd-new) - Start a change before continuing
+- [/sdd-ff](/commands/sdd-ff) - Fast-forward through planning phases
+- [/sdd-apply](/commands/sdd-apply) - Implement tasks
+- [/sdd-verify](/commands/sdd-verify) - Validate implementation
+- [/sdd-archive](/commands/sdd-archive) - Archive completed change

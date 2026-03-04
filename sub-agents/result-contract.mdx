@@ -1,0 +1,169 @@
+---
+title: Result Contract
+description: Structured envelope format returned by all sub-agents
+---
+
+Every sub-agent in Agent Teams Lite returns a **structured result envelope** to the orchestrator. This contract ensures consistent communication and enables the orchestrator to make informed decisions about next steps.
+
+## Result Envelope Format
+
+Sub-agents return results in this Markdown format:
+
+```markdown
+## {Phase Name} Complete
+
+**Change**: {change-name}
+**Status**: {success | warning | failure}
+
+### Summary
+{1-3 sentence executive summary for the orchestrator}
+
+### Artifacts
+{List of created/updated artifacts with paths or observation IDs}
+
+### Next Recommended
+{What the orchestrator should do next — be specific}
+
+### Risks
+{Any issues, warnings, or blockers discovered}
+```
+
+## Fields
+
+<ResponseField name="Phase Name" type="string" required>
+The phase name (e.g., "Proposal Created", "Design Complete", "Verification Report")
+</ResponseField>
+
+<ResponseField name="Change" type="string">
+The change name this result relates to (e.g., "add-dark-mode"). Omitted for sdd-init.
+</ResponseField>
+
+<ResponseField name="Status" type="enum" required>
+Result status:
+- `success` — Phase completed without issues
+- `warning` — Phase completed but with non-blocking concerns
+- `failure` — Phase failed or blocked
+</ResponseField>
+
+<ResponseField name="Summary" type="string" required>
+A concise executive summary (1-3 sentences) that the orchestrator can parse to understand what happened.
+</ResponseField>
+
+<ResponseField name="Artifacts" type="list" required>
+List of artifacts created or updated:
+- **engram mode**: Observation IDs (e.g., `#obs_12345`)
+- **openspec mode**: File paths (e.g., `openspec/changes/add-dark-mode/proposal.md`)
+- **none mode**: "None (ephemeral)" or inline artifact description
+</ResponseField>
+
+<ResponseField name="Next Recommended" type="string" required>
+What the orchestrator should do next. Be specific:
+- "Ready for specs (sdd-spec)"
+- "Ready for implementation (sdd-apply)"
+- "Blocked: resolve open questions in design before proceeding"
+</ResponseField>
+
+<ResponseField name="Risks" type="list">
+Any issues, warnings, or concerns discovered during the phase:
+- **CRITICAL**: Must be resolved before proceeding
+- **WARNING**: Should be addressed but won't block
+- **SUGGESTION**: Nice-to-have improvements
+
+If none, say "None."
+</ResponseField>
+
+## Example: Proposal Created (openspec mode)
+
+```markdown
+## Proposal Created
+
+**Change**: add-dark-mode
+**Status**: success
+
+### Summary
+Proposal defines UI theme switching with localStorage persistence. Scope includes 3 core deliverables (theme toggle, CSS variables, persistence). Risk level: Low.
+
+### Artifacts
+- openspec/changes/add-dark-mode/proposal.md
+
+### Next Recommended
+Ready for specs (sdd-spec) or design (sdd-design). Recommend running both in parallel.
+
+### Risks
+None.
+```
+
+## Example: Verification Failed
+
+```markdown
+## Verification Report
+
+**Change**: add-dark-mode
+**Status**: failure
+
+### Summary
+Verification failed: 3 of 8 spec scenarios are UNTESTED. Build passed, but 2 tests failed. Cannot archive until tests are fixed.
+
+### Artifacts
+- openspec/changes/add-dark-mode/verify-report.md
+
+### Next Recommended
+Fix failing tests in `src/theme/__tests__/toggle.test.ts`, then re-verify. Do NOT proceed to archive.
+
+### Risks
+- **CRITICAL**: `ThemeToggle` component throws error when localStorage is unavailable (scenario "Graceful fallback" UNTESTED)
+- **CRITICAL**: Test "persists theme choice" expects 'dark' but got 'light'
+- **WARNING**: Coverage is 67%, below recommended 80% threshold
+```
+
+## Example: Init with Engram
+
+```markdown
+## SDD Initialized
+
+**Project**: my-app
+**Status**: success
+
+### Summary
+Project context detected (React 19 + TypeScript + Vitest). Persistence mode: engram. Project context saved to Engram.
+
+### Artifacts
+- Engram observation: #obs_abc123 (topic_key: sdd-init/my-app)
+
+### Next Recommended
+Ready for /sdd-explore &lt;topic&gt; or /sdd-new &lt;change-name&gt;.
+
+### Risks
+None.
+```
+
+## Why This Contract Exists
+
+### Consistency
+Every sub-agent speaks the same language. The orchestrator doesn't need custom parsers for each phase.
+
+### Decision Making
+The orchestrator uses `Status` and `Next Recommended` to decide whether to:
+- Proceed to the next phase automatically
+- Ask the user for input
+- Stop and report an error
+
+### Traceability
+The `Artifacts` field creates a clear audit trail:
+- In **engram mode**: observation IDs enable retrieval via `mem_get_observation`
+- In **openspec mode**: file paths enable filesystem inspection
+- In **none mode**: inline results are logged in the conversation
+
+### Error Handling
+The `Risks` field ensures issues don't get silently lost. The orchestrator surfaces CRITICAL risks to the user immediately.
+
+## Sub-Agent Responsibilities
+
+Each sub-agent MUST:
+- Return a result envelope in this exact format
+- Set `Status` accurately (don't return `success` if there are CRITICAL risks)
+- Be specific in `Next Recommended` (don't just say "continue")
+- List ALL artifacts created or updated
+- Flag risks with severity levels (CRITICAL / WARNING / SUGGESTION)
+
+The orchestrator relies on this contract to make autonomous decisions about workflow progression.

@@ -1,0 +1,328 @@
+---
+title: OpenSpec Convention
+description: Directory structure and file paths for SDD artifacts on the filesystem
+---
+
+The **OpenSpec Convention** defines how SDD artifacts are organized on the filesystem when using `openspec` persistence mode.
+
+## Directory Structure
+
+```
+openspec/
+├── config.yaml              ← Project-specific SDD config
+├── specs/                   ← Source of truth (main specs)
+│   └── {domain}/
+│       └── spec.md
+└── changes/                 ← Active changes
+    ├── archive/             ← Completed changes (YYYY-MM-DD-{change-name}/)
+    └── {change-name}/       ← Active change folder
+        ├── exploration.md   ← (optional) from sdd-explore
+        ├── proposal.md      ← from sdd-propose
+        ├── specs/           ← from sdd-spec
+        │   └── {domain}/
+        │       └── spec.md  ← Delta spec
+        ├── design.md        ← from sdd-design
+        ├── tasks.md         ← from sdd-tasks (updated by sdd-apply)
+        └── verify-report.md ← from sdd-verify
+```
+
+## Artifact File Paths
+
+| Skill | Creates / Reads | Path |
+|-------|----------------|------|
+| sdd-init | Creates | `openspec/config.yaml`, `openspec/specs/`, `openspec/changes/`, `openspec/changes/archive/` |
+| sdd-explore | Creates (optional) | `openspec/changes/{change-name}/exploration.md` |
+| sdd-propose | Creates | `openspec/changes/{change-name}/proposal.md` |
+| sdd-spec | Creates | `openspec/changes/{change-name}/specs/{domain}/spec.md` |
+| sdd-design | Creates | `openspec/changes/{change-name}/design.md` |
+| sdd-tasks | Creates | `openspec/changes/{change-name}/tasks.md` |
+| sdd-apply | Updates | `openspec/changes/{change-name}/tasks.md` (marks `[x]`) |
+| sdd-verify | Creates | `openspec/changes/{change-name}/verify-report.md` |
+| sdd-archive | Moves | `openspec/changes/{change-name}/` → `openspec/changes/archive/YYYY-MM-DD-{change-name}/` |
+| sdd-archive | Updates | `openspec/specs/{domain}/spec.md` (merges deltas into main specs) |
+
+## Reading Artifacts
+
+Each skill reads its dependencies from the filesystem:
+
+```
+Proposal:   openspec/changes/{change-name}/proposal.md
+Specs:      openspec/changes/{change-name}/specs/  (all domain subdirectories)
+Design:     openspec/changes/{change-name}/design.md
+Tasks:      openspec/changes/{change-name}/tasks.md
+Verify:     openspec/changes/{change-name}/verify-report.md
+Config:     openspec/config.yaml
+Main specs: openspec/specs/{domain}/spec.md
+```
+
+## Writing Rules
+
+- **ALWAYS create the change directory** (`openspec/changes/{change-name}/`) before writing artifacts
+- If a file already exists, **READ it first and UPDATE it** (don't overwrite blindly)
+- If the change directory already exists with artifacts, the change is being **CONTINUED**
+- Use the `openspec/config.yaml` `rules` section to apply project-specific constraints per phase
+
+## Config File Reference
+
+```yaml
+# openspec/config.yaml
+schema: spec-driven
+
+context: |
+  Tech stack: {detected}
+  Architecture: {detected}
+  Testing: {detected}
+  Style: {detected}
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    - Follow existing code patterns
+    tdd: false           # Set to true to enable RED-GREEN-REFACTOR
+    test_command: ""     # e.g., "npm test", "pytest"
+  verify:
+    test_command: ""     # Override for verification
+    build_command: ""    # Override for build check
+    coverage_threshold: 0  # Set > 0 to enable coverage check
+  archive:
+    - Warn before merging destructive deltas
+```
+
+## Config Fields
+
+<ResponseField name="schema" type="string" required>
+Must be `spec-driven`
+</ResponseField>
+
+<ResponseField name="context" type="string" required>
+Project context detected by `sdd-init`. Includes tech stack, architecture, testing framework, and style conventions.
+</ResponseField>
+
+<ResponseField name="rules.proposal" type="array">
+Rules for the proposal phase (applied by `sdd-propose`)
+</ResponseField>
+
+<ResponseField name="rules.specs" type="array">
+Rules for the specs phase (applied by `sdd-spec`)
+</ResponseField>
+
+<ResponseField name="rules.design" type="array">
+Rules for the design phase (applied by `sdd-design`)
+</ResponseField>
+
+<ResponseField name="rules.tasks" type="array">
+Rules for the task planning phase (applied by `sdd-tasks`)
+</ResponseField>
+
+<ResponseField name="rules.apply.tdd" type="boolean">
+Enable TDD workflow in `sdd-apply`. When `true`, every task follows RED → GREEN → REFACTOR cycle.
+</ResponseField>
+
+<ResponseField name="rules.apply.test_command" type="string">
+Override test command for running tests during implementation (e.g., `npm test`, `pytest`, `go test`)
+</ResponseField>
+
+<ResponseField name="rules.verify.test_command" type="string">
+Override test command for verification phase. If not set, uses `rules.apply.test_command` or auto-detects.
+</ResponseField>
+
+<ResponseField name="rules.verify.build_command" type="string">
+Override build command for verification phase (e.g., `npm run build`, `go build`, `python -m build`)
+</ResponseField>
+
+<ResponseField name="rules.verify.coverage_threshold" type="number">
+Minimum coverage percentage required. If set to 0 (default), coverage check is skipped. Set to e.g. 80 to enforce 80% coverage.
+</ResponseField>
+
+<ResponseField name="rules.archive" type="array">
+Rules for the archive phase (applied by `sdd-archive`)
+</ResponseField>
+
+## Archive Structure
+
+When archiving, the change folder moves to:
+
+```
+openspec/changes/archive/YYYY-MM-DD-{change-name}/
+```
+
+Use today's date in ISO format. The archive is an **AUDIT TRAIL** — never delete or modify archived changes.
+
+### Example Archive
+
+```
+openspec/changes/archive/
+├── 2026-02-15-add-dark-mode/
+│   ├── proposal.md
+│   ├── specs/
+│   │   └── ui/
+│   │       └── theme/
+│   │           └── spec.md
+│   ├── design.md
+│   ├── tasks.md
+│   └── verify-report.md
+├── 2026-02-20-add-auth/
+│   ├── exploration.md
+│   ├── proposal.md
+│   ├── specs/
+│   ├── design.md
+│   ├── tasks.md
+│   └── verify-report.md
+└── 2026-03-04-refactor-api/
+    ├── proposal.md
+    ├── specs/
+    ├── design.md
+    ├── tasks.md
+    └── verify-report.md
+```
+
+## Main Specs (Source of Truth)
+
+The `openspec/specs/` directory contains the **current state** of all specifications. These are updated by `sdd-archive` when a change is completed.
+
+```
+openspec/specs/
+├── auth/
+│   └── spec.md          ← Full spec for authentication domain
+├── payments/
+│   └── spec.md          ← Full spec for payments domain
+└── ui/
+    ├── theme/
+    │   └── spec.md      ← Full spec for theming
+    └── navigation/
+        └── spec.md      ← Full spec for navigation
+```
+
+### Delta Specs vs Main Specs
+
+- **Delta specs** (`openspec/changes/{change-name}/specs/`) describe **what's changing**
+- **Main specs** (`openspec/specs/`) describe **current behavior**
+
+When a change is archived, delta specs are **merged into main specs** by `sdd-archive`.
+
+## Example: Change Lifecycle
+
+### 1. Initialize
+
+```bash
+/sdd-init
+# Creates:
+# - openspec/config.yaml
+# - openspec/specs/
+# - openspec/changes/
+# - openspec/changes/archive/
+```
+
+### 2. Create Change
+
+```bash
+/sdd-new add-dark-mode
+# Creates:
+# - openspec/changes/add-dark-mode/
+```
+
+### 3. Explore
+
+```bash
+# (part of /sdd-new)
+# Creates:
+# - openspec/changes/add-dark-mode/exploration.md
+```
+
+### 4. Propose
+
+```bash
+# (part of /sdd-new)
+# Creates:
+# - openspec/changes/add-dark-mode/proposal.md
+```
+
+### 5. Spec
+
+```bash
+# (part of /sdd-new)
+# Creates:
+# - openspec/changes/add-dark-mode/specs/ui/theme/spec.md
+```
+
+### 6. Design
+
+```bash
+# (part of /sdd-new)
+# Creates:
+# - openspec/changes/add-dark-mode/design.md
+```
+
+### 7. Tasks
+
+```bash
+# (part of /sdd-new)
+# Creates:
+# - openspec/changes/add-dark-mode/tasks.md
+```
+
+### 8. Apply
+
+```bash
+/sdd-apply
+# Updates:
+# - openspec/changes/add-dark-mode/tasks.md (marks tasks [x])
+```
+
+### 9. Verify
+
+```bash
+/sdd-verify
+# Creates:
+# - openspec/changes/add-dark-mode/verify-report.md
+```
+
+### 10. Archive
+
+```bash
+/sdd-archive add-dark-mode
+# 1. Merges delta spec into main spec:
+#    openspec/changes/add-dark-mode/specs/ui/theme/spec.md
+#    → openspec/specs/ui/theme/spec.md
+#
+# 2. Moves change to archive:
+#    openspec/changes/add-dark-mode/
+#    → openspec/changes/archive/2026-03-04-add-dark-mode/
+```
+
+## Git Integration
+
+The `openspec/` directory is **designed to be committed to git**:
+
+```bash
+# Commit a new change proposal
+git add openspec/changes/add-dark-mode/
+git commit -m "Propose: Add dark mode support"
+
+# Commit after implementation
+git add openspec/changes/add-dark-mode/
+git add src/  # implementation
+git commit -m "Implement: Add dark mode"
+
+# Commit after archiving
+git add openspec/specs/ui/theme/spec.md
+git add openspec/changes/archive/2026-03-04-add-dark-mode/
+git rm -r openspec/changes/add-dark-mode/
+git commit -m "Archive: Add dark mode"
+```
+
+## Related
+
+- [Persistence Contract](/sub-agents/persistence-contract) — Mode resolution rules
+- [Engram Convention](/sub-agents/engram-convention) — Memory-based alternative
+- [Init Sub-Agent](/sub-agents/init) — Bootstraps the directory structure

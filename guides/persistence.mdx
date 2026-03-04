@@ -1,0 +1,399 @@
+---
+title: Persistence Modes
+description: Understanding engram, openspec, and none persistence modes in Agent Teams Lite
+icon: "database"
+---
+
+## Overview
+
+Agent Teams Lite is storage-agnostic. Artifacts can be persisted in three different modes:
+
+- **`engram`** (recommended default) — Persistent, repo-clean storage via [Engram](https://github.com/gentleman-programming/engram)
+- **`openspec`** (file-based, optional) — File artifacts in project directory
+- **`none`** (ephemeral, no persistence) — No writes, artifacts exist only in conversation
+
+<Note>
+The workflow engine is completely pluggable. All 9 sub-agent skills reference shared convention files to ensure consistent behavior across persistence modes.
+</Note>
+
+## Mode Resolution
+
+The orchestrator passes `artifact_store.mode` with one of: `engram | openspec | none`.
+
+### Default Resolution Policy
+
+When the orchestrator does not explicitly set a mode:
+
+1. **If Engram is available** → use `engram`
+2. **Otherwise** → use `none`
+
+<Warning>
+`openspec` is **NEVER used by default** — only when the orchestrator explicitly passes `openspec`.
+</Warning>
+
+When falling back to `none`, the system recommends the user enable `engram` or `openspec` for better results.
+
+## Quick Modes by Use Case
+
+### Recommended: Engram Mode
+
+```yaml
+# Agent-team storage policy
+artifact_store:
+  mode: engram      # Recommended: persistent, repo-clean
+```
+
+**Best for:**
+- Production workflows
+- Team collaboration
+- Long-running feature development
+- Audit trails and lineage tracking
+
+### Privacy: None Mode
+
+```yaml
+# Privacy/local-only (no persistence)
+artifact_store:
+  mode: none
+```
+
+**Best for:**
+- Privacy-sensitive projects
+- Exploratory work
+- Quick prototypes
+- When you don't want any artifacts written
+
+### File-based: OpenSpec Mode
+
+```yaml
+# File artifacts in project (OpenSpec flow)
+artifact_store:
+  mode: openspec
+```
+
+**Best for:**
+- When you explicitly want file artifacts
+- Projects that prefer file-based specs
+- When Engram is not available and you need persistence
+- Audit trails in version control
+
+## Behavior Per Mode
+
+| Mode | Read from | Write to | Project files |
+|------|-----------|----------|---------------|
+| `engram` | Engram (see Engram Convention) | Engram | Never |
+| `openspec` | Filesystem (see OpenSpec Convention) | Filesystem | Yes |
+| `none` | Orchestrator prompt context | Nowhere | Never |
+
+## Common Rules
+
+<Accordion title="Mode-Specific Rules">
+
+### Engram Mode
+- **DO NOT** write any project files
+- Persist all artifacts to Engram
+- Return observation IDs in result envelope
+- Use deterministic naming: `sdd/{change-name}/{artifact-type}`
+- Always use two-step recovery: `mem_search` → `mem_get_observation`
+
+### OpenSpec Mode
+- Write files **ONLY** to paths defined in `openspec-convention.md`
+- Create `openspec/` directory structure
+- Update `tasks.md` in-place with `[x]` marks
+- Follow archive structure: `YYYY-MM-DD-{change-name}/`
+
+### None Mode
+- **DO NOT** create or modify any project files
+- Return results inline only
+- All artifacts exist only in conversation context
+- No persistence between sessions
+
+</Accordion>
+
+<Warning>
+**NEVER force `openspec/` creation** unless the orchestrator explicitly passed `openspec` mode. If you are unsure which mode to use, default to `none`.
+</Warning>
+
+## Engram Mode Deep Dive
+
+### Deterministic Artifact Naming
+
+All SDD artifacts persisted to Engram **MUST** follow this naming convention:
+
+```
+title:     sdd/{change-name}/{artifact-type}
+topic_key: sdd/{change-name}/{artifact-type}
+type:      architecture
+project:   {detected or current project name}
+scope:     project
+```
+
+### Artifact Types
+
+| Artifact Type | Produced By | Description |
+|---------------|-------------|-------------|
+| `explore` | sdd-explore | Exploration analysis |
+| `proposal` | sdd-propose | Change proposal |
+| `spec` | sdd-spec | Delta specifications (all domains concatenated) |
+| `design` | sdd-design | Technical design |
+| `tasks` | sdd-tasks | Task breakdown |
+| `apply-progress` | sdd-apply | Implementation progress (one per batch) |
+| `verify-report` | sdd-verify | Verification report |
+| `archive-report` | sdd-archive | Archive closure with lineage |
+
+**Exception:** `sdd-init` uses `sdd-init/{project-name}` as both title and topic_key (it's project-scoped, not change-scoped).
+
+### Example: Writing to Engram
+
+```javascript
+mem_save(
+  title: "sdd/add-dark-mode/proposal",
+  topic_key: "sdd/add-dark-mode/proposal",
+  type: "architecture",
+  project: "my-app",
+  content: "# Proposal: Add Dark Mode\n\n..."
+)
+```
+
+### Two-Step Recovery Protocol
+
+<Warning>
+**MANDATORY:** To retrieve an artifact, ALWAYS use this two-step process.
+</Warning>
+
+```
+Step 1: Search by topic_key pattern
+  mem_search(query: "sdd/{change-name}/{artifact-type}", project: "{project}")
+  → Returns a truncated preview with an observation ID
+
+Step 2: Get full content (REQUIRED)
+  mem_get_observation(id: {observation-id from step 1})
+  → Returns complete, untruncated content
+```
+
+**NEVER use `mem_search` results directly** as the full artifact — they are truncated previews. **ALWAYS call `mem_get_observation`** to get the complete content.
+
+### Retrieving Multiple Artifacts
+
+When a skill needs multiple artifacts (e.g., sdd-tasks needs proposal + spec + design):
+
+```javascript
+// Step 1: Search for all required artifacts
+mem_search(query: "sdd/{change-name}/proposal", project: "{project}") → get ID
+mem_search(query: "sdd/{change-name}/spec", project: "{project}") → get ID
+mem_search(query: "sdd/{change-name}/design", project: "{project}") → get ID
+
+// Step 2: Get full content for EACH
+mem_get_observation(id) for EACH → full content
+```
+
+### Loading Project Context
+
+```javascript
+mem_search(query: "sdd-init/{project}", project: "{project}") → get ID
+mem_get_observation(id) → full project context
+```
+
+### Browsing All Artifacts for a Change
+
+```javascript
+mem_search(query: "sdd/{change-name}/", project: "{project}")
+→ Returns all artifacts for that change
+```
+
+### Updating Artifacts
+
+When updating an artifact you already retrieved (e.g., marking tasks complete):
+
+```javascript
+// If you have the observation ID
+mem_update(
+  id: {observation-id},
+  content: "{updated full content}"
+)
+
+// For upserts (Engram deduplicates by topic_key)
+mem_save(
+  title: "sdd/{change-name}/{artifact-type}",
+  topic_key: "sdd/{change-name}/{artifact-type}",  // Same topic_key
+  type: "architecture",
+  project: "{project}",
+  content: "{updated content}"
+)
+```
+
+### Why This Convention Exists
+
+- **Deterministic titles** → recovery works by exact match, not fuzzy search
+- **`topic_key`** → enables upserts (updating same artifact without creating duplicates)
+- **`sdd/` prefix** → namespaces all SDD artifacts away from other Engram observations
+- **Two-step recovery** → `mem_search` previews are always truncated; `mem_get_observation` is the only way to get full content
+- **Lineage** → archive-report includes all observation IDs for complete traceability
+
+## OpenSpec Mode Deep Dive
+
+### Directory Structure
+
+When `openspec` mode is enabled, a change produces this structure:
+
+```
+openspec/
+├── config.yaml              ← Project-specific SDD config
+├── specs/                   ← Source of truth (main specs)
+│   └── {domain}/
+│       └── spec.md
+└── changes/                 ← Active changes
+    ├── archive/             ← Completed changes (YYYY-MM-DD-{change-name}/)
+    └── {change-name}/       ← Active change folder
+        ├── exploration.md   ← (optional) from sdd-explore
+        ├── proposal.md      ← from sdd-propose
+        ├── specs/           ← from sdd-spec
+        │   └── {domain}/
+        │       └── spec.md  ← Delta spec
+        ├── design.md        ← from sdd-design
+        ├── tasks.md         ← from sdd-tasks (updated by sdd-apply)
+        └── verify-report.md ← from sdd-verify
+```
+
+### Artifact File Paths
+
+| Skill | Creates / Reads | Path |
+|-------|----------------|------|
+| sdd-init | Creates | `openspec/config.yaml`, `openspec/specs/`, `openspec/changes/`, `openspec/changes/archive/` |
+| sdd-explore | Creates (optional) | `openspec/changes/{change-name}/exploration.md` |
+| sdd-propose | Creates | `openspec/changes/{change-name}/proposal.md` |
+| sdd-spec | Creates | `openspec/changes/{change-name}/specs/{domain}/spec.md` |
+| sdd-design | Creates | `openspec/changes/{change-name}/design.md` |
+| sdd-tasks | Creates | `openspec/changes/{change-name}/tasks.md` |
+| sdd-apply | Updates | `openspec/changes/{change-name}/tasks.md` (marks `[x]`) |
+| sdd-verify | Creates | `openspec/changes/{change-name}/verify-report.md` |
+| sdd-archive | Moves | `openspec/changes/{change-name}/` → `openspec/changes/archive/YYYY-MM-DD-{change-name}/` |
+| sdd-archive | Updates | `openspec/specs/{domain}/spec.md` (merges deltas into main specs) |
+
+### Reading Artifacts
+
+Each skill reads its dependencies from the filesystem:
+
+```
+Proposal:  openspec/changes/{change-name}/proposal.md
+Specs:     openspec/changes/{change-name}/specs/  (all domain subdirectories)
+Design:    openspec/changes/{change-name}/design.md
+Tasks:     openspec/changes/{change-name}/tasks.md
+Verify:    openspec/changes/{change-name}/verify-report.md
+Config:    openspec/config.yaml
+Main specs: openspec/specs/{domain}/spec.md
+```
+
+### Writing Rules
+
+<Accordion title="OpenSpec Writing Guidelines">
+
+- **ALWAYS** create the change directory (`openspec/changes/{change-name}/`) before writing artifacts
+- If a file already exists, **READ it first** and UPDATE it (don't overwrite blindly)
+- If the change directory already exists with artifacts, the change is being **CONTINUED**
+- Use the `openspec/config.yaml` `rules` section to apply project-specific constraints per phase
+
+</Accordion>
+
+### Config File Reference
+
+```yaml
+# openspec/config.yaml
+schema: spec-driven
+
+context: |
+  Tech stack: {detected}
+  Architecture: {detected}
+  Testing: {detected}
+  Style: {detected}
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    - Follow existing code patterns
+    tdd: false           # Set to true to enable RED-GREEN-REFACTOR
+    test_command: ""     # e.g., "npm test", "pytest"
+  verify:
+    test_command: ""     # Override for verification
+    build_command: ""    # Override for build check
+    coverage_threshold: 0  # Set > 0 to enable coverage check
+  archive:
+    - Warn before merging destructive deltas
+```
+
+### Archive Structure
+
+When archiving, the change folder moves to:
+
+```
+openspec/changes/archive/YYYY-MM-DD-{change-name}/
+```
+
+Use today's date in ISO format. The archive is an **AUDIT TRAIL** — never delete or modify archived changes.
+
+## Detail Level Control
+
+The orchestrator may also pass `detail_level`: `concise | standard | deep`.
+
+This controls output verbosity but **does NOT affect what gets persisted** — always persist the full artifact.
+
+## Shared Convention Files
+
+All skills reference these shared convention files for consistent behavior:
+
+| File | Purpose |
+|------|------|
+| `persistence-contract.md` | Mode resolution rules — how `engram`, `openspec`, and `none` modes behave, what each mode reads/writes, and the fallback policy |
+| `engram-convention.md` | Deterministic artifact naming (`sdd/{change-name}/{artifact-type}`), two-step recovery protocol (search then get full content), and write/update patterns via `topic_key` upserts |
+| `openspec-convention.md` | Filesystem paths for each artifact, directory structure, config.yaml reference, and archive layout |
+
+<Note>
+**Why they exist:** Previously each skill inlined its own persistence logic (~224 lines of duplication across 9 skills). Now each skill references the shared files for DRY principles and consistent behavior.
+</Note>
+
+## Choosing the Right Mode
+
+<CardGroup cols={3}>
+  <Card title="Engram" icon="cloud">
+    **Best for most teams**
+    - Persistent across sessions
+    - No repo clutter
+    - Full audit trail
+    - Deterministic naming
+  </Card>
+  <Card title="OpenSpec" icon="folder">
+    **When you need files**
+    - File-based workflow
+    - Version control integration
+    - Explicit artifact request
+    - Self-contained changes
+  </Card>
+  <Card title="None" icon="eye-slash">
+    **Privacy first**
+    - No persistence
+    - Ephemeral artifacts
+    - Quick exploration
+    - No file writes
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Complete Workflow" icon="diagram-project" href="/guides/workflow">
+    Learn the full SDD workflow
+  </Card>
+  <Card title="Delta Specs" icon="code-compare" href="/guides/delta-specs">
+    Understand how delta specs work
+  </Card>
+</CardGroup>

@@ -1,0 +1,202 @@
+---
+title: /sdd-init
+description: Initialize Spec-Driven Development context in any project
+---
+
+## Overview
+
+The `/sdd-init` command bootstraps Spec-Driven Development in your project. It detects your tech stack, identifies conventions, and initializes the active persistence backend.
+
+<Info>
+Run this command once per project before using other SDD commands.
+</Info>
+
+## Usage
+
+```bash
+/sdd-init
+```
+
+<ParamField path="No parameters" type="void">
+  This command takes no arguments.
+</ParamField>
+
+## What It Does
+
+### 1. Detects Project Context
+
+The init sub-agent scans your project to understand:
+
+- **Tech stack** - Checks `package.json`, `go.mod`, `pyproject.toml`, `Cargo.toml`, etc.
+- **Conventions** - Identifies linters (ESLint, Prettier), formatters, test frameworks
+- **Architecture patterns** - Detects existing patterns like MVC, layered architecture, etc.
+- **Testing infrastructure** - Finds test commands and coverage tools
+
+### 2. Bootstraps Persistence Backend
+
+Behavior depends on the configured artifact store mode:
+
+<Tabs>
+  <Tab title="engram mode">
+    - Persists project context to Engram
+    - Creates observation with `topic_key: sdd-init/{project-name}`
+    - No project files created
+    - Zero filesystem footprint
+  </Tab>
+  <Tab title="openspec mode">
+    - Creates `openspec/` directory structure
+    - Writes `openspec/config.yaml` with detected context
+    - Creates `openspec/specs/` and `openspec/changes/` directories
+    - Ready for file-based workflow
+  </Tab>
+  <Tab title="none mode">
+    - Returns detected context in-memory only
+    - No persistence across sessions
+    - No project files created
+  </Tab>
+</Tabs>
+
+### 3. Generates Configuration
+
+When using `openspec` mode, creates a config file with:
+
+```yaml
+# openspec/config.yaml
+schema: spec-driven
+
+context: |
+  Tech stack: React 18, TypeScript, Vite
+  Architecture: Component-based with hooks
+  Testing: Vitest + React Testing Library
+  Style: ESLint + Prettier, Tailwind CSS
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Identify affected modules/packages
+  specs:
+    - Use Given/When/Then format for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+  tasks:
+    - Group tasks by phase (infrastructure, implementation, testing)
+    - Use hierarchical numbering (1.1, 1.2, etc.)
+  apply:
+    - Follow existing code patterns and conventions
+  verify:
+    - Run tests if test infrastructure exists
+    - Compare implementation against every spec scenario
+```
+
+## Example Output
+
+### With engram Mode
+
+```markdown
+## SDD Initialized
+
+**Project**: my-saas-app
+**Stack**: Next.js 14, TypeScript, PostgreSQL, Prisma
+**Persistence**: engram
+
+### Context Saved
+Project context persisted to Engram.
+- **Engram ID**: #42837
+- **Topic key**: sdd-init/my-saas-app
+
+No project files created.
+
+### Next Steps
+Ready for /sdd-explore <topic> or /sdd-new <change-name>.
+```
+
+### With openspec Mode
+
+```markdown
+## SDD Initialized
+
+**Project**: my-saas-app
+**Stack**: Next.js 14, TypeScript, PostgreSQL, Prisma
+**Persistence**: openspec
+
+### Structure Created
+- openspec/config.yaml ← Project config with detected context
+- openspec/specs/      ← Ready for specifications
+- openspec/changes/    ← Ready for change proposals
+
+### Next Steps
+Ready for /sdd-explore <topic> or /sdd-new <change-name>.
+```
+
+## When to Use
+
+<CardGroup cols={2}>
+  <Card title="First Time Setup" icon="seedling">
+    Run once when adding Agent Teams Lite to an existing project
+  </Card>
+  <Card title="New Project" icon="plus">
+    Run immediately after project scaffolding
+  </Card>
+  <Card title="Team Onboarding" icon="users">
+    Each team member runs in their environment
+  </Card>
+  <Card title="CI/CD Integration" icon="gears">
+    Run in CI to validate SDD structure
+  </Card>
+</CardGroup>
+
+## Re-initialization
+
+If you run `/sdd-init` on a project that's already initialized:
+
+- **engram mode**: Updates the existing observation with fresh context
+- **openspec mode**: Reports what exists and asks if you want to update `config.yaml`
+- **none mode**: Returns fresh context without modifying anything
+
+<Warning>
+`/sdd-init` never creates placeholder spec files. Specs are created by `/sdd-new` during actual changes.
+</Warning>
+
+## Configuration Options
+
+The init process respects these settings from your agent configuration:
+
+<ParamField path="artifact_store.mode" type="string" default="engram">
+  Controls where artifacts are stored: `engram`, `openspec`, or `none`
+</ParamField>
+
+<ParamField path="tdd" type="boolean" default="false">
+  Enable Test-Driven Development workflow in `/sdd-apply`
+</ParamField>
+
+<ParamField path="test_command" type="string">
+  Command to run tests (e.g., `npm test`, `pytest`)
+</ParamField>
+
+<ParamField path="build_command" type="string">
+  Command to build the project (e.g., `npm run build`)
+</ParamField>
+
+## Next Steps
+
+After initialization, you can:
+
+<Steps>
+  <Step title="Explore ideas">
+    Use `/sdd-explore <topic>` to investigate approaches without creating changes
+  </Step>
+  <Step title="Start a change">
+    Use `/sdd-new <name>` to begin a structured feature development
+  </Step>
+  <Step title="Fast-forward planning">
+    Use `/sdd-ff <name>` to generate all planning artifacts at once
+  </Step>
+</Steps>
+
+## Related Commands
+
+- [/sdd-explore](/commands/sdd-explore) - Investigate ideas after initialization
+- [/sdd-new](/commands/sdd-new) - Start your first change
+- [/sdd-ff](/commands/sdd-ff) - Fast-forward through planning phases

@@ -1,0 +1,198 @@
+---
+title: Explorer Sub-Agent
+description: Investigate ideas and codebase before committing to a change
+---
+
+The **sdd-explore** sub-agent investigates the codebase, analyzes approaches, and returns a structured exploration report. It's the research phase of SDD.
+
+## Metadata
+
+<ResponseField name="name" type="string">
+`sdd-explore`
+</ResponseField>
+
+<ResponseField name="version" type="string">
+`2.0`
+</ResponseField>
+
+<ResponseField name="author" type="string">
+`gentleman-programming`
+</ResponseField>
+
+<ResponseField name="license" type="string">
+`MIT`
+</ResponseField>
+
+## When It's Triggered
+
+The orchestrator launches `sdd-explore` when:
+- User wants to investigate a feature or idea before implementing
+- User says "/sdd-explore [topic]"
+- As the first step of `/sdd-new` workflow
+- User asks "how would I implement X?" or "what's the best way to..."
+
+## What It Does
+
+### Step 1: Understand the Request
+
+Parses what the user wants to explore:
+- Is this a new feature? A bug fix? A refactor?
+- What domain does it touch?
+- What's the high-level goal?
+
+### Step 2: Investigate the Codebase
+
+Reads relevant code to understand:
+- Current architecture and patterns
+- Files and modules that would be affected
+- Existing behavior that relates to the request
+- Potential constraints or risks
+
+The sub-agent uses file search and code reading tools to gather context. It never guesses — it reads actual code.
+
+### Step 3: Analyze Options
+
+If there are multiple approaches, compares them:
+
+| Approach | Pros | Cons | Complexity |
+|----------|------|------|------------|
+| Option A | ... | ... | Low/Med/High |
+| Option B | ... | ... | Low/Med/High |
+
+### Step 4: Optionally Save Exploration
+
+- If the orchestrator provided a **change name** (part of `/sdd-new`), saves analysis to `openspec/changes/{change-name}/exploration.md` (or Engram)
+- If **no change name** (standalone `/sdd-explore`), returns analysis without creating files
+
+### Step 5: Return Structured Analysis
+
+Returns a [result envelope](/sub-agents/result-contract) with exploration findings.
+
+## Result Envelope Example
+
+```markdown
+## Exploration: Add Dark Mode
+
+### Current State
+The app uses a static CSS theme defined in `src/styles/theme.css`. Color variables are hardcoded with light theme values. No theming infrastructure exists.
+
+### Affected Areas
+- `src/styles/theme.css` — Contains hardcoded color values
+- `src/components/App.tsx` — Would need theme provider wrapper
+- `src/hooks/` — New `useTheme` hook needed
+- `localStorage` — For theme persistence
+
+### Approaches
+
+1. **CSS Variables + React Context** — Use CSS custom properties toggled via React context
+   - Pros: Native CSS, performant, no runtime overhead for style switching
+   - Cons: IE11 compatibility (not a concern for modern apps)
+   - Effort: Low
+
+2. **CSS-in-JS (Styled Components)** — Replace static CSS with styled-components theming
+   - Pros: Type-safe themes, scoped styles, dynamic theming
+   - Cons: Requires refactoring all components, larger bundle size
+   - Effort: High
+
+3. **Tailwind Dark Mode** — Use Tailwind's built-in dark mode classes
+   - Pros: Already using Tailwind, minimal setup
+   - Cons: Requires adding dark: prefix to every element, manual work
+   - Effort: Medium
+
+### Recommendation
+**CSS Variables + React Context** (Option 1)
+
+Why:
+- Lowest effort for the benefit
+- Leverages existing CSS structure
+- Performant (no JS in rendering path)
+- Easy to extend later
+
+### Risks
+- Need to ensure all color values use CSS variables (currently ~30 hardcoded colors)
+- SSR flash if theme applied after hydration (can be mitigated with inline script)
+
+### Ready for Proposal
+Yes — we have enough context to create a proposal. Recommend proceeding with `/sdd-propose` using Option 1 as the approach.
+```
+
+## Exploration Document Format
+
+When saved to a file, the format is:
+
+```markdown
+## Exploration: {topic}
+
+### Current State
+{How the system works today relevant to this topic}
+
+### Affected Areas
+- `path/to/file.ext` — {why it's affected}
+- `path/to/other.ext` — {why it's affected}
+
+### Approaches
+1. **{Approach name}** — {brief description}
+   - Pros: {list}
+   - Cons: {list}
+   - Effort: {Low/Medium/High}
+
+2. **{Approach name}** — {brief description}
+   - Pros: {list}
+   - Cons: {list}
+   - Effort: {Low/Medium/High}
+
+### Recommendation
+{Your recommended approach and why}
+
+### Risks
+- {Risk 1}
+- {Risk 2}
+
+### Ready for Proposal
+{Yes/No — and what the orchestrator should tell the user}
+```
+
+## Persistence Behavior
+
+### Standalone Exploration (no change name)
+
+```bash
+# User command
+/sdd-explore "How to add authentication?"
+
+# Explorer behavior
+- Investigates codebase
+- Returns analysis inline
+- Does NOT create exploration.md
+- Artifact store mode: irrelevant (nothing persisted)
+```
+
+### Part of a Change (change name provided)
+
+```bash
+# User command
+/sdd-new add-auth
+
+# Orchestrator launches explorer with change_name="add-auth"
+# Explorer behavior:
+- Investigates codebase
+- Saves to openspec/changes/add-auth/exploration.md (if openspec mode)
+- OR saves to Engram as sdd/add-auth/explore (if engram mode)
+- Returns analysis
+```
+
+## Rules
+
+- The **ONLY file** you MAY create is `exploration.md` inside the change folder (if a change name is provided)
+- **DO NOT modify any existing code or files** — this is read-only investigation
+- **ALWAYS read real code** — never guess about the codebase
+- Keep analysis **CONCISE** — the orchestrator needs a summary, not a novel
+- If you can't find enough information, say so clearly
+- If the request is too vague, say what clarification is needed
+- Return a structured envelope with: `status`, `executive_summary`, `detailed_report`, `artifacts`, `next_recommended`, and `risks`
+
+## Related
+
+- [Proposer](/sub-agents/proposer) — Takes exploration output and creates a proposal
+- [Persistence Contract](/sub-agents/persistence-contract)
+- [Engram Convention](/sub-agents/engram-convention)

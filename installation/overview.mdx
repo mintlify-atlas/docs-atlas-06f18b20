@@ -1,0 +1,205 @@
+---
+title: Installation Overview
+description: Quick start guide for installing Agent Teams Lite on any AI coding assistant
+---
+
+Agent Teams Lite is a zero-dependency, pure Markdown orchestration pattern. Installation is simple: copy skill files and add orchestrator instructions to your tool's configuration.
+
+## Installation Process
+
+All installations follow the same pattern:
+
+<Steps>
+  <Step title="Run the installer">
+    Clone the repository and run the interactive installer:
+    
+    ```bash
+    git clone https://github.com/gentleman-programming/agent-teams-lite.git
+    cd agent-teams-lite
+    ./scripts/install.sh
+    ```
+    
+    The installer will prompt you to choose your AI coding assistant.
+  </Step>
+  
+  <Step title="Add orchestrator instructions">
+    After copying skills, add the orchestrator instructions to your tool's configuration file. Each tool has a specific config location:
+    
+    - Claude Code: `~/.claude/CLAUDE.md`
+    - OpenCode: `~/.config/opencode/opencode.json`
+    - Gemini CLI: `~/.gemini/GEMINI.md`
+    - Codex: `~/.codex/agents.md`
+    - VS Code: `.github/copilot-instructions.md`
+    - Antigravity: `~/.gemini/GEMINI.md` or `.agent/rules/`
+    - Cursor: `.cursorrules`
+  </Step>
+  
+  <Step title="Verify installation">
+    Open your AI assistant in any project and type:
+    
+    ```
+    /sdd-init
+    ```
+    
+    If the command is recognized, installation was successful.
+  </Step>
+</Steps>
+
+## Supported Tools
+
+<CardGroup cols={2}>
+  <Card title="Claude Code" icon="circle-check" href="/installation/claude-code">
+    Full sub-agent support via Task tool
+  </Card>
+  
+  <Card title="OpenCode" icon="circle-check" href="/installation/opencode">
+    Full sub-agent support via Task tool
+  </Card>
+  
+  <Card title="Gemini CLI" icon="terminal" href="/installation/gemini-cli">
+    Inline skill execution
+  </Card>
+  
+  <Card title="Codex" icon="code" href="/installation/codex">
+    Inline skill execution
+  </Card>
+  
+  <Card title="VS Code" icon="window" href="/installation/vscode">
+    Agent mode with context files
+  </Card>
+  
+  <Card title="Antigravity" icon="rocket" href="/installation/antigravity">
+    Native skill support
+  </Card>
+  
+  <Card title="Cursor" icon="cursor" href="/installation/cursor">
+    Inline skill execution
+  </Card>
+</CardGroup>
+
+## Sub-Agent Support Levels
+
+Different tools provide different levels of sub-agent support:
+
+### Full Sub-Agent Delegation
+
+**Claude Code** and **OpenCode** support true sub-agent delegation via their Task tools. Each phase runs in a fresh context window, keeping the orchestrator lightweight.
+
+**Benefits:**
+- Minimal context compression
+- Better output quality per phase
+- Orchestrator stays lightweight for long sessions
+
+### Inline Skill Execution
+
+**Gemini CLI**, **Codex**, **VS Code**, **Antigravity**, and **Cursor** run skills inline within a single context window. The orchestrator reads skill instructions directly.
+
+**Benefits:**
+- Simpler setup
+- Works everywhere
+- Still provides structured workflow
+
+## Quick Install Commands
+
+### Interactive Mode
+
+```bash
+cd agent-teams-lite
+./scripts/install.sh
+```
+
+### Non-Interactive Mode
+
+<CodeGroup>
+```bash Claude Code
+./scripts/install.sh --agent claude-code
+```
+
+```bash OpenCode
+./scripts/install.sh --agent opencode
+```
+
+```bash Gemini CLI
+./scripts/install.sh --agent gemini-cli
+```
+
+```bash Codex
+./scripts/install.sh --agent codex
+```
+
+```bash Cursor
+./scripts/install.sh --agent cursor
+```
+
+```bash All Global
+./scripts/install.sh --agent all-global
+```
+</CodeGroup>
+
+## Persistence Options
+
+Agent Teams Lite supports three artifact storage modes:
+
+<CardGroup cols={3}>
+  <Card title="engram" icon="database">
+    **Recommended**. Persistent storage via Engram MCP server. Keeps your repository clean.
+  </Card>
+  
+  <Card title="openspec" icon="folder">
+    File-based artifacts in `openspec/` directory. Only used when explicitly requested.
+  </Card>
+  
+  <Card title="none" icon="ban">
+    Ephemeral mode. No persistence. Results returned inline only.
+  </Card>
+</CardGroup>
+
+### Default Policy
+
+1. If Engram is available → use `engram` (recommended)
+2. If user explicitly asks for file artifacts → use `openspec`
+3. Otherwise → use `none` (no writes)
+
+<Info>
+  `openspec` is NEVER chosen automatically. It only activates when you explicitly request file-based artifacts.
+</Info>
+
+## What Gets Installed
+
+The installer copies these files to your tool's skill directory:
+
+### Skills
+
+- `sdd-init/SKILL.md` — Bootstrap project context
+- `sdd-explore/SKILL.md` — Investigate codebase
+- `sdd-propose/SKILL.md` — Create change proposal
+- `sdd-spec/SKILL.md` — Write specifications
+- `sdd-design/SKILL.md` — Technical design
+- `sdd-tasks/SKILL.md` — Task breakdown
+- `sdd-apply/SKILL.md` — Implement code (v2.0 with TDD)
+- `sdd-verify/SKILL.md` — Validate implementation (v2.0 with real tests)
+- `sdd-archive/SKILL.md` — Archive completed change
+
+### Shared Conventions
+
+- `_shared/persistence-contract.md` — Storage mode resolution
+- `_shared/engram-convention.md` — Engram artifact naming
+- `_shared/openspec-convention.md` — File structure reference
+
+### Additional Files (OpenCode Only)
+
+- `sdd-*.md` command files in `~/.config/opencode/commands/`
+
+## Next Steps
+
+Choose your AI coding assistant to see detailed installation instructions:
+
+<CardGroup cols={2}>
+  <Card title="Claude Code" icon="arrow-right" href="/installation/claude-code" />
+  <Card title="OpenCode" icon="arrow-right" href="/installation/opencode" />
+  <Card title="Gemini CLI" icon="arrow-right" href="/installation/gemini-cli" />
+  <Card title="Codex" icon="arrow-right" href="/installation/codex" />
+  <Card title="VS Code" icon="arrow-right" href="/installation/vscode" />
+  <Card title="Antigravity" icon="arrow-right" href="/installation/antigravity" />
+  <Card title="Cursor" icon="arrow-right" href="/installation/cursor" />
+</CardGroup>

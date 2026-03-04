@@ -1,0 +1,460 @@
+---
+title: /sdd-archive
+description: Close a completed change and sync specs to source of truth
+---
+
+## Overview
+
+The `/sdd-archive` command finalizes a completed change by merging delta specs into the main specs (source of truth) and moving the change folder to the archive. This closes the SDD cycle.
+
+<Warning>
+Only run this command after successful verification. The change should be code-complete and tested.
+</Warning>
+
+## Usage
+
+```bash
+/sdd-archive [change-name]
+```
+
+<ParamField path="change-name" type="string">
+  Optional. The change to archive. If omitted, archives the most recent verified change.
+</ParamField>
+
+## What It Does
+
+### 1. Validates Readiness
+
+Checks prerequisites:
+- ✓ Verification report exists?
+- ✓ Verification status is PASS or PASS WITH WARNINGS?
+- ✓ No CRITICAL issues?
+- ✓ All MUST/SHALL requirements met?
+
+### 2. Merges Delta Specs
+
+Syncs change specs into main specs:
+
+<Tabs>
+  <Tab title="ADDED specs">
+    Copies new spec files to main specs directory:
+    ```
+    changes/add-csv-export/specs/api/csv-export.md
+                                 ↓
+    specs/api/csv-export.md
+    ```
+  </Tab>
+  <Tab title="MODIFIED specs">
+    Merges changes into existing spec files:
+    - Adds new requirements
+    - Updates modified requirements
+    - Preserves existing unaffected content
+  </Tab>
+  <Tab title="REMOVED specs">
+    Deletes obsolete spec files or sections:
+    - Warns before large removals
+    - Asks for confirmation on destructive changes
+  </Tab>
+</Tabs>
+
+### 3. Moves to Archive
+
+Relocates the change folder with timestamp:
+
+```
+openspec/changes/add-dark-mode/
+              ↓
+openspec/changes/archive/2024-03-04-add-dark-mode/
+```
+
+Archive preserves:
+- Proposal
+- Exploration
+- Specs (delta)
+- Design
+- Tasks
+- Verification report
+
+### 4. Generates Archive Report
+
+Creates a summary:
+- Change name and date
+- Specs merged
+- Files affected
+- Audit trail reference
+
+## Example Output
+
+### Successful Archive
+
+```bash
+/sdd-archive
+```
+
+**Output:**
+
+```markdown
+## Archiving change: add-dark-mode
+
+### Pre-Archive Validation
+✓ Verification report exists
+✓ Status: PASS WITH WARNINGS
+✓ No CRITICAL issues
+✓ All MUST/SHALL requirements met
+✓ Ready to archive
+
+---
+
+## Merging Delta Specs
+
+### ADDED Specs
+
+Copying new spec files to main specs...
+
+✓ specs/ui/theme-toggle.md
+  - 3 requirements added
+  - 7 scenarios added
+  
+✓ specs/core/theme-system.md
+  - 4 requirements added
+  - 9 scenarios added
+
+### MODIFIED Specs
+
+Updating existing spec files...
+
+✓ specs/ui/layout.md
+  - Updated requirement: "Layout SHOULD support theme variants"
+  - Added scenario: "Layout applies theme class to root element"
+
+### REMOVED Specs
+None
+
+---
+
+## Moving to Archive
+
+Relocating change folder...
+
+```
+openspec/changes/add-dark-mode/
+              ↓
+openspec/changes/archive/2024-03-04-add-dark-mode/
+```
+
+✓ Moved successfully
+
+---
+
+## Archive Summary
+
+**Change**: add-dark-mode
+**Completed**: 2024-03-04
+**Specs Merged**: 3 files (2 added, 1 modified)
+**Files Affected**: 5 implementation files
+
+### Source of Truth Updated
+Main specs now reflect the current system state including dark mode support.
+
+### Audit Trail
+Full change history preserved in:
+`openspec/changes/archive/2024-03-04-add-dark-mode/`
+
+Includes:
+- proposal.md - Original intent and scope
+- exploration.md - Codebase analysis
+- specs/ - Delta specifications
+- design.md - Technical approach
+- tasks.md - Implementation checklist
+- verification-report.md - Quality validation
+
+---
+
+✅ Archive complete. Change closed successfully.
+
+The specs directory is now the source of truth for the current system.
+```
+
+### Archive with Warnings
+
+```markdown
+## Archiving change: refactor-auth
+
+### Pre-Archive Validation
+✓ Verification report exists
+⚠️  Status: PASS WITH WARNINGS
+✓ No CRITICAL issues
+⚠️  1 WARNING: TODO comment in auth-service.ts
+✓ All MUST/SHALL requirements met
+
+---
+
+⚠️  Warning Found
+
+The verification report contains 1 WARNING:
+- TODO comment: "Add rate limiting to login endpoint"
+
+This doesn't block archiving, but consider:
+1. Creating a follow-up issue/change for this TODO
+2. Or removing the TODO if not planned
+
+Proceed with archive? (yes/no)
+```
+
+**User types: yes**
+
+```markdown
+---
+
+## Merging Delta Specs
+
+### REMOVED Specs
+
+⚠️  Destructive changes detected!
+
+The following specs will be REMOVED:
+- specs/auth/session-cookies.md (replaced by JWT approach)
+
+This will DELETE 237 lines including:
+- 5 requirements
+- 12 scenarios
+
+Confirm deletion? (yes/no)
+```
+
+**User types: yes**
+
+```markdown
+✓ Removed specs/auth/session-cookies.md
+
+### ADDED Specs
+
+✓ specs/auth/jwt-tokens.md
+  - 6 requirements added
+  - 14 scenarios added
+
+---
+
+## Moving to Archive
+
+✓ Moved to openspec/changes/archive/2024-03-04-refactor-auth/
+
+---
+
+✅ Archive complete with warnings addressed.
+```
+
+## Archive Structure
+
+The archive preserves complete change history:
+
+```
+openspec/changes/archive/
+├── 2024-03-04-add-dark-mode/
+│   ├── proposal.md
+│   ├── exploration.md
+│   ├── specs/
+│   │   ├── ui/theme-toggle.md
+│   │   └── core/theme-system.md
+│   ├── design.md
+│   ├── tasks.md
+│   └── verification-report.md
+├── 2024-03-01-fix-auth-bug/
+│   └── ...
+└── 2024-02-28-add-csv-export/
+    └── ...
+```
+
+## Delta Spec Merging
+
+The archiver intelligently merges specs:
+
+### ADDED Requirements
+
+**Change spec:**
+```markdown
+## ADDED Requirements
+
+### Requirement: CSV Export
+The system SHALL support exporting data to CSV format.
+```
+
+**Main spec after merge:**
+```markdown
+## Requirements
+
+### Requirement: JSON Export
+{existing content}
+
+### Requirement: CSV Export
+The system SHALL support exporting data to CSV format.
+```
+
+### MODIFIED Requirements
+
+**Change spec:**
+```markdown
+## MODIFIED Requirements
+
+### Requirement: Data Export
+The system SHALL support multiple export formats.
+(Previously: The system SHALL support JSON export.)
+```
+
+**Main spec after merge:**
+```markdown
+### Requirement: Data Export
+The system SHALL support multiple export formats.
+```
+
+### REMOVED Requirements
+
+**Change spec:**
+```markdown
+## REMOVED Requirements
+
+### Requirement: CSV Email Delivery
+{content that's being removed}
+```
+
+**Main spec after merge:**
+```markdown
+{Section deleted, asks for confirmation first}
+```
+
+## When to Use
+
+<CardGroup cols={2}>
+  <Card title="After Verification" icon="check">
+    Run after `/sdd-verify` passes successfully
+  </Card>
+  <Card title="Change Complete" icon="circle-check">
+    All code written, tested, and reviewed
+  </Card>
+  <Card title="Before Deployment" icon="rocket">
+    Close the change before deploying to production
+  </Card>
+  <Card title="Cycle Completion" icon="rotate">
+    Final step in the SDD workflow
+  </Card>
+</CardGroup>
+
+<Warning>
+**Don't archive if:**
+- Verification has CRITICAL issues
+- Tests are failing
+- MUST/SHALL requirements not met
+- Code review pending
+</Warning>
+
+## Archive Checklist
+
+Before archiving, confirm:
+
+<AccordionGroup>
+  <Accordion title="✓ Verification passed">
+    - [ ] `/sdd-verify` run successfully
+    - [ ] Status is PASS or PASS WITH WARNINGS
+    - [ ] No CRITICAL issues
+    - [ ] All tests passing
+  </Accordion>
+  
+  <Accordion title="✓ Implementation complete">
+    - [ ] All tasks marked done
+    - [ ] Code reviewed (if team process)
+    - [ ] No TODOs (or documented as follow-up)
+    - [ ] Ready to deploy
+  </Accordion>
+  
+  <Accordion title="✓ Specs accurate">
+    - [ ] Delta specs reflect actual changes
+    - [ ] No placeholder content
+    - [ ] Scenarios match implementation
+  </Accordion>
+  
+  <Accordion title="✓ Documentation updated">
+    - [ ] README updated if needed
+    - [ ] API docs updated if needed
+    - [ ] Migration guide written if needed
+  </Accordion>
+</AccordionGroup>
+
+## Rollback After Archive
+
+If you need to revert an archived change:
+
+<Steps>
+  <Step title="Find archive">
+    ```bash
+    cd openspec/changes/archive/2024-03-04-add-dark-mode/
+    ```
+  </Step>
+  <Step title="Read rollback plan">
+    ```bash
+    cat proposal.md
+    # See "Rollback Plan" section
+    ```
+  </Step>
+  <Step title="Revert code changes">
+    Use git to revert commits or manually undo changes
+  </Step>
+  <Step title="Revert spec changes">
+    Manually undo spec merges (ADDED → delete, MODIFIED → restore previous)
+  </Step>
+</Steps>
+
+## Spec Sync Behavior
+
+How specs are synced:
+
+| Change Spec | Main Spec | Action |
+|-------------|-----------|--------|
+| ADDED new file | Doesn't exist | Copy file to main specs |
+| ADDED section | File exists | Append section to file |
+| MODIFIED section | Exists | Replace section in file |
+| REMOVED section | Exists | Delete section (with warning) |
+| REMOVED file | Exists | Delete file (with confirmation) |
+
+## Archive Reports
+
+The archive report includes:
+
+```markdown
+# Archive Report: add-dark-mode
+
+Date: 2024-03-04
+
+## Change Summary
+- **Intent**: Add user-toggleable dark mode
+- **Complexity**: Medium (2-3 days)
+- **Risk Level**: Medium
+
+## Implementation
+- **Tasks Completed**: 9/9
+- **Files Modified**: 5
+- **Tests Added**: 5
+- **Lines Changed**: +387 / -12
+
+## Specs Synced
+- **Added**: 2 files (11 requirements, 16 scenarios)
+- **Modified**: 1 file (1 requirement updated)
+- **Removed**: 0 files
+
+## Verification
+- **Status**: PASS WITH WARNINGS
+- **Tests**: 52 passing
+- **Coverage**: 89%
+- **Warnings**: 1 (TODO comment)
+
+## Archive Location
+openspec/changes/archive/2024-03-04-add-dark-mode/
+
+## Next Steps
+Specs now reflect current system state. Archive preserved for audit trail.
+```
+
+## Related Commands
+
+- [/sdd-verify](/commands/sdd-verify) - Always verify before archiving
+- [/sdd-apply](/commands/sdd-apply) - Implement before archiving
+- [/sdd-new](/commands/sdd-new) - Start the next change

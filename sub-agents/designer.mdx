@@ -1,0 +1,306 @@
+---
+title: Designer Sub-Agent
+description: Create technical design document with architecture decisions
+---
+
+The **sdd-design** sub-agent creates a technical design document that captures **HOW** the change will be implemented — architecture decisions, data flow, file changes, and technical rationale.
+
+## Metadata
+
+<ResponseField name="name" type="string">
+`sdd-design`
+</ResponseField>
+
+<ResponseField name="version" type="string">
+`2.0`
+</ResponseField>
+
+<ResponseField name="author" type="string">
+`gentleman-programming`
+</ResponseField>
+
+<ResponseField name="license" type="string">
+`MIT`
+</ResponseField>
+
+## When It's Triggered
+
+The orchestrator launches `sdd-design` when:
+- User runs `/sdd-new <change-name>` (after specs)
+- User wants to create or update the technical design
+- Specs are complete and ready for technical planning
+
+## What It Does
+
+### Step 1: Read the Codebase
+
+Before designing, reads the actual code that will be affected:
+- Entry points and module structure
+- Existing patterns and conventions
+- Dependencies and interfaces
+- Test infrastructure (if any)
+
+The sub-agent **never guesses** — it reads real code to understand the current architecture.
+
+### Step 2: Write design.md
+
+Creates a design document:
+
+```
+openspec/changes/{change-name}/
+├── proposal.md
+├── specs/
+└── design.md              ← Created here
+```
+
+## Design Document Format
+
+```markdown
+# Design: {Change Title}
+
+## Technical Approach
+
+{Concise description of the overall technical strategy.
+How does this map to the proposal's approach? Reference specs.}
+
+## Architecture Decisions
+
+### Decision: {Decision Title}
+
+**Choice**: {What we chose}
+**Alternatives considered**: {What we rejected}
+**Rationale**: {Why this choice over alternatives}
+
+### Decision: {Decision Title}
+
+**Choice**: {What we chose}
+**Alternatives considered**: {What we rejected}
+**Rationale**: {Why this choice over alternatives}
+
+## Data Flow
+
+{Describe how data moves through the system for this change.
+Use ASCII diagrams when helpful.}
+
+    Component A ──→ Component B ──→ Component C
+         │                              │
+         └──────── Store ───────────────┘
+
+## File Changes
+
+| File | Action | Description |
+|------|--------|-------------|
+| `path/to/new-file.ext` | Create | {What this file does} |
+| `path/to/existing.ext` | Modify | {What changes and why} |
+| `path/to/old-file.ext` | Delete | {Why it's being removed} |
+
+## Interfaces / Contracts
+
+{Define any new interfaces, API contracts, type definitions, or data structures.
+Use code blocks with the project's language.}
+
+## Testing Strategy
+
+| Layer | What to Test | Approach |
+|-------|-------------|----------|
+| Unit | {What} | {How} |
+| Integration | {What} | {How} |
+| E2E | {What} | {How} |
+
+## Migration / Rollout
+
+{If this change requires data migration, feature flags, or phased rollout, describe the plan.
+If not applicable, state "No migration required."}
+
+## Open Questions
+
+- [ ] {Any unresolved technical question}
+- [ ] {Any decision that needs team input}
+```
+
+## Example: Dark Mode Design
+
+```markdown
+# Design: Add Dark Mode
+
+## Technical Approach
+
+Use CSS custom properties (CSS variables) for all color values, toggled via a React Context. The theme toggle updates a `data-theme` attribute on the root element, which triggers CSS variable swaps. Theme preference is persisted to `localStorage`.
+
+This approach maps to the proposal's recommended "CSS Variables + React Context" pattern and satisfies all spec requirements.
+
+## Architecture Decisions
+
+### Decision: CSS Variables vs. CSS-in-JS
+
+**Choice**: CSS custom properties (CSS variables)
+**Alternatives considered**: Styled Components with ThemeProvider
+**Rationale**: 
+- No runtime overhead — CSS is static
+- No need to refactor existing CSS files to JS
+- Better performance (no JS in style computation)
+- Existing codebase already uses plain CSS
+- Easier for designers to modify themes (just change variables, not JS objects)
+
+### Decision: Context vs. Redux for Theme State
+
+**Choice**: React Context
+**Alternatives considered**: Add theme to Redux store
+**Rationale**:
+- Theme is UI-only state (not business logic)
+- Doesn't need time-travel debugging
+- Simpler — no action creators, no reducers
+- Avoids coupling theme to application state
+
+### Decision: localStorage Key and Format
+
+**Choice**: Store as `theme: "light" | "dark"` string in localStorage
+**Alternatives considered**: Store as boolean `isDark`, or complex object with more settings
+**Rationale**:
+- String enum is extensible (can add more themes later)
+- Simpler to read/debug than boolean
+- No need for complex object in MVP
+
+## Data Flow
+
+    User clicks toggle
+         │
+         v
+    ThemeContext.toggleTheme()
+         │
+         ├──→ Update state
+         ├──→ Write to localStorage
+         └──→ Set data-theme attribute on <html>
+              │
+              v
+         CSS :root[data-theme="dark"] activates
+              │
+              v
+         UI re-renders with new colors
+
+## File Changes
+
+| File | Action | Description |
+|------|--------|-------------|
+| `src/contexts/ThemeContext.tsx` | Create | Theme state and toggle logic, provides theme to components |
+| `src/hooks/useTheme.ts` | Create | Hook to consume theme context, returns `{ theme, toggleTheme }` |
+| `src/styles/theme.css` | Modify | Convert hardcoded colors to CSS variables, add dark palette |
+| `src/components/App.tsx` | Modify | Wrap app with `<ThemeProvider>` |
+| `src/components/Header.tsx` | Modify | Add theme toggle button (moon/sun icon) |
+| `src/main.tsx` | Modify | Add inline script to apply theme before first render (avoid flash) |
+
+## Interfaces / Contracts
+
+### ThemeContext Interface
+
+```typescript
+type Theme = 'light' | 'dark';
+
+interface ThemeContextValue {
+  theme: Theme;
+  toggleTheme: () => void;
+}
+
+const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
+```
+
+### useTheme Hook
+
+```typescript
+function useTheme(): ThemeContextValue {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error('useTheme must be used within ThemeProvider');
+  }
+  return context;
+}
+```
+
+### CSS Variables Structure
+
+```css
+:root {
+  --color-bg: #ffffff;
+  --color-text: #000000;
+  --color-primary: #0066cc;
+  /* ... */
+}
+
+:root[data-theme="dark"] {
+  --color-bg: #1a1a1a;
+  --color-text: #ffffff;
+  --color-primary: #3399ff;
+  /* ... */
+}
+```
+
+## Testing Strategy
+
+| Layer | What to Test | Approach |
+|-------|-------------|----------|
+| Unit | ThemeContext toggle logic | React Testing Library: render provider, toggle, assert state change |
+| Unit | useTheme hook error when outside provider | Assert that hook throws when not wrapped in ThemeProvider |
+| Unit | localStorage read/write | Mock localStorage, test persistence and retrieval |
+| Integration | Theme changes apply to UI | Render full app, toggle theme, assert CSS variable values change |
+| E2E | Theme persists across reload | Cypress: toggle theme, reload page, assert theme is still applied |
+
+## Migration / Rollout
+
+No migration required. This is a purely additive feature with no breaking changes.
+
+Feature flag: Not needed. Theme toggle will be visible to all users immediately. If gradual rollout is desired, add `FEATURE_DARK_MODE` env var.
+
+## Open Questions
+
+None — design is ready for implementation.
+```
+
+## Result Envelope Example
+
+```markdown
+## Design Created
+
+**Change**: add-dark-mode
+**Location**: openspec/changes/add-dark-mode/design.md
+
+### Summary
+- **Approach**: CSS variables + React Context with localStorage persistence
+- **Key Decisions**: 3 decisions documented (CSS vars vs CSS-in-JS, Context vs Redux, storage format)
+- **Files Affected**: 3 new, 3 modified, 0 deleted
+- **Testing Strategy**: Unit, integration, and E2E coverage planned
+
+### Open Questions
+None — ready for implementation.
+
+### Next Step
+Ready for tasks (sdd-tasks).
+```
+
+## Rules
+
+- **ALWAYS read the actual codebase** before designing — never guess
+- Every decision **MUST have a rationale** (the "why")
+- Include **concrete file paths**, not abstract descriptions
+- Use the project's **ACTUAL patterns and conventions**, not generic best practices
+- If the codebase uses a pattern different from what you'd recommend, **note it but FOLLOW the existing pattern** unless the change specifically addresses it
+- Keep ASCII diagrams **simple** — clarity over beauty
+- Apply any `rules.design` from `openspec/config.yaml`
+- If you have open questions that **BLOCK the design**, say so clearly — don't guess
+- Return a structured envelope with: `status`, `executive_summary`, `detailed_report`, `artifacts`, `next_recommended`, and `risks`
+
+## Common Architecture Decisions
+
+- **State management**: Context vs Redux vs Zustand vs local state
+- **Styling approach**: CSS-in-JS vs CSS Modules vs Tailwind vs plain CSS
+- **Data fetching**: React Query vs SWR vs manual fetch
+- **Type safety**: TypeScript interfaces vs PropTypes
+- **Testing**: Vitest vs Jest, React Testing Library vs Enzyme
+- **Component patterns**: Compound components vs render props vs hooks
+
+Always document WHY you chose one over the others.
+
+## Related
+
+- [Spec Writer](/sub-agents/spec-writer) — Provides specs that inform design
+- [Task Planner](/sub-agents/task-planner) — Breaks design into implementation tasks
+- [OpenSpec Convention](/sub-agents/openspec-convention)

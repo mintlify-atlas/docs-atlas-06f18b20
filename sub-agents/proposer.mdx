@@ -1,0 +1,223 @@
+---
+title: Proposer Sub-Agent
+description: Create change proposals with intent, scope, and approach
+---
+
+The **sdd-propose** sub-agent creates structured change proposals. It takes exploration analysis (or direct user input) and produces a `proposal.md` document that defines what will be built and why.
+
+## Metadata
+
+<ResponseField name="name" type="string">
+`sdd-propose`
+</ResponseField>
+
+<ResponseField name="version" type="string">
+`2.0`
+</ResponseField>
+
+<ResponseField name="author" type="string">
+`gentleman-programming`
+</ResponseField>
+
+<ResponseField name="license" type="string">
+`MIT`
+</ResponseField>
+
+## When It's Triggered
+
+The orchestrator launches `sdd-propose` when:
+- User runs `/sdd-new <change-name>` (after exploration)
+- User wants to create or update a proposal
+- Exploration is complete and ready for formalization
+
+## What It Does
+
+### Step 1: Create Change Directory
+
+Creates the change folder structure:
+
+```
+openspec/changes/{change-name}/
+└── proposal.md
+```
+
+Or, in engram mode, prepares to save with topic_key: `sdd/{change-name}/proposal`
+
+### Step 2: Read Existing Specs
+
+If `openspec/specs/` has relevant specs, reads them to understand current behavior that this change might affect.
+
+### Step 3: Write proposal.md
+
+Creates a structured proposal with these sections:
+
+#### Proposal Format
+
+```markdown
+# Proposal: {Change Title}
+
+## Intent
+
+{What problem are we solving? Why does this change need to happen?
+Be specific about the user need or technical debt being addressed.}
+
+## Scope
+
+### In Scope
+- {Concrete deliverable 1}
+- {Concrete deliverable 2}
+- {Concrete deliverable 3}
+
+### Out of Scope
+- {What we're explicitly NOT doing}
+- {Future work that's related but deferred}
+
+## Approach
+
+{High-level technical approach. How will we solve this?
+Reference the recommended approach from exploration if available.}
+
+## Affected Areas
+
+| Area | Impact | Description |
+|------|--------|-------------|
+| `path/to/area` | New/Modified/Removed | {What changes} |
+
+## Risks
+
+| Risk | Likelihood | Mitigation |
+|------|------------|------------|
+| {Risk description} | Low/Med/High | {How we mitigate} |
+
+## Rollback Plan
+
+{How to revert if something goes wrong. Be specific.}
+
+## Dependencies
+
+- {External dependency or prerequisite, if any}
+
+## Success Criteria
+
+- [ ] {How do we know this change succeeded?}
+- [ ] {Measurable outcome}
+```
+
+### Step 4: Return Summary
+
+Returns a [result envelope](/sub-agents/result-contract) with proposal summary.
+
+## Result Envelope Example
+
+```markdown
+## Proposal Created
+
+**Change**: add-dark-mode
+**Location**: openspec/changes/add-dark-mode/proposal.md
+
+### Summary
+- **Intent**: Enable users to switch between light and dark themes for reduced eye strain
+- **Scope**: 3 deliverables in (theme toggle, CSS variables, persistence), 2 items deferred (per-component overrides, theme preview)
+- **Approach**: CSS variables + React Context pattern
+- **Risk Level**: Low
+
+### Next Step
+Ready for specs (sdd-spec) or design (sdd-design).
+```
+
+## Proposal Example
+
+Here's a real proposal document:
+
+```markdown
+# Proposal: Add Dark Mode
+
+## Intent
+
+Users have requested the ability to switch between light and dark color schemes to reduce eye strain in low-light environments. Currently, the app only supports a light theme with no way for users to customize the appearance.
+
+This change will introduce a theme toggle that persists the user's preference.
+
+## Scope
+
+### In Scope
+- Theme toggle button in the app header
+- CSS variable system for color theming
+- React Context for theme state management
+- LocalStorage persistence of theme choice
+- Dark theme color palette
+
+### Out of Scope
+- Per-component theme overrides (deferred to future)
+- Theme preview during selection (not in MVP)
+- Automatic theme based on system preference (could be added later)
+
+## Approach
+
+Use CSS custom properties (CSS variables) for all color values, managed by a React Context. When the user toggles the theme:
+
+1. React Context updates the active theme
+2. Root element gets `data-theme="dark"` attribute
+3. CSS variables switch to dark palette
+4. Choice saved to `localStorage`
+
+On page load, read from `localStorage` and apply theme before first render to avoid flash.
+
+## Affected Areas
+
+| Area | Impact | Description |
+|------|--------|-------------|
+| `src/styles/theme.css` | Modified | Convert hardcoded colors to CSS variables |
+| `src/contexts/ThemeContext.tsx` | New | Theme state management with Context |
+| `src/hooks/useTheme.ts` | New | Hook to consume theme context |
+| `src/components/Header.tsx` | Modified | Add theme toggle button |
+| `src/components/App.tsx` | Modified | Wrap with ThemeProvider |
+| `localStorage` | Modified | Store theme preference |
+
+## Risks
+
+| Risk | Likelihood | Mitigation |
+|------|------------|------------|
+| SSR theme flash (dark → light or vice versa) | Medium | Inject inline script before hydration to apply theme immediately |
+| Missing color variables (some hardcoded colors remain) | Low | Audit all `.css` files during implementation |
+| Browser compatibility with CSS variables | Very Low | CSS variables supported in all modern browsers (IE11 not a target) |
+
+## Rollback Plan
+
+If the feature needs to be reverted:
+1. Remove `data-theme` attribute from root
+2. Revert `theme.css` to use hardcoded light colors
+3. Remove `ThemeProvider` from `App.tsx`
+4. Remove toggle button from `Header.tsx`
+
+No data migration needed — localStorage entry can remain without side effects.
+
+## Dependencies
+
+None. This change is self-contained.
+
+## Success Criteria
+
+- [ ] User can toggle between light and dark themes via header button
+- [ ] Theme choice persists across page reloads
+- [ ] All UI components render correctly in both themes
+- [ ] No color contrast accessibility violations (WCAG AA)
+- [ ] No SSR flash (theme applied before first paint)
+```
+
+## Rules
+
+- In `openspec` mode, **ALWAYS create** the `proposal.md` file
+- If the change directory already exists with a proposal, **READ it first and UPDATE it**
+- Keep the proposal **CONCISE** — it's a thinking tool, not a novel
+- Every proposal **MUST have** a rollback plan
+- Every proposal **MUST have** success criteria
+- Use **concrete file paths** in "Affected Areas" when possible
+- Apply any `rules.proposal` from `openspec/config.yaml`
+- Return a structured envelope with: `status`, `executive_summary`, `detailed_report`, `artifacts`, `next_recommended`, and `risks`
+
+## Related
+
+- [Explorer](/sub-agents/explorer) — Provides the exploration analysis
+- [Spec Writer](/sub-agents/spec-writer) — Next phase after proposal
+- [OpenSpec Convention](/sub-agents/openspec-convention)

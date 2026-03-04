@@ -1,0 +1,137 @@
+---
+title: Sub-Agent Architecture
+description: How Agent Teams Lite orchestrates specialized sub-agents for Spec-Driven Development
+---
+
+Agent Teams Lite implements a **sub-agent architecture** where a main orchestrator delegates specialized tasks to focused sub-agents. Each sub-agent is responsible for one phase of the Spec-Driven Development (SDD) workflow.
+
+## How It Works
+
+```
+User Request
+    ↓
+Orchestrator (decides which sub-agent to launch)
+    ↓
+Sub-Agent (executes specific phase)
+    ↓
+Returns structured result envelope
+    ↓
+Orchestrator (decides next step)
+```
+
+## The Orchestrator
+
+The orchestrator is responsible for:
+
+- Parsing user intent
+- Resolving which sub-agent(s) to launch
+- Passing context and configuration to sub-agents
+- Interpreting sub-agent results
+- Deciding the next recommended action
+
+The orchestrator **never implements tasks directly** — it always delegates to specialized sub-agents.
+
+## Sub-Agents
+
+Each sub-agent is a **skill** loaded dynamically via the `skill` tool. Sub-agents are:
+
+| Sub-Agent | Phase | Responsibility |
+|-----------|-------|----------------|
+| **sdd-init** | Initialize | Detect stack, bootstrap persistence |
+| **sdd-explore** | Explore | Investigate codebase, analyze approaches |
+| **sdd-propose** | Propose | Create change proposal with scope and intent |
+| **sdd-spec** | Specify | Write delta specifications (requirements + scenarios) |
+| **sdd-design** | Design | Create technical design with architecture decisions |
+| **sdd-tasks** | Plan | Break down implementation into concrete tasks |
+| **sdd-apply** | Implement | Write code following specs and design |
+| **sdd-verify** | Verify | Validate implementation against specs |
+| **sdd-archive** | Archive | Sync delta specs to main specs, archive change |
+
+## Communication Protocol
+
+Sub-agents communicate with the orchestrator via **structured result envelopes**.
+
+### Result Envelope Structure
+
+Every sub-agent returns a result following the [result contract](/sub-agents/result-contract):
+
+```markdown
+## {Phase} Complete
+
+**Change**: {change-name}
+**Status**: {success/warning/failure}
+
+### Summary
+{Executive summary for the orchestrator}
+
+### Artifacts
+{List of created/updated artifacts with paths}
+
+### Next Recommended
+{What the orchestrator should do next}
+
+### Risks
+{Any issues or warnings discovered}
+```
+
+The orchestrator parses this envelope and decides:
+- Should we proceed to the next phase?
+- Should we ask the user for input?
+- Should we fix issues first?
+
+## Persistence Modes
+
+Sub-agents operate in one of three persistence modes:
+
+| Mode | Storage | Project Files | Use Case |
+|------|---------|---------------|----------|
+| **engram** | Memory (Engram tool) | Never created | Ephemeral exploration, no file pollution |
+| **openspec** | Filesystem (`openspec/`) | Yes | Audit trail, team collaboration, long-term projects |
+| **none** | Inline return only | Never created | One-off questions, prototyping |
+
+The orchestrator passes the `artifact_store.mode` to each sub-agent. Sub-agents follow the [persistence contract](/sub-agents/persistence-contract) to determine read/write behavior.
+
+## Skill Loading
+
+Sub-agents are loaded dynamically using the `skill` tool:
+
+```typescript
+skill(name: "sdd-init")  // Loads skills/sdd-init/SKILL.md
+skill(name: "sdd-explore")
+skill(name: "sdd-propose")
+// etc.
+```
+
+Each skill has:
+- Frontmatter with metadata (name, description, version, trigger conditions)
+- Instructions for the sub-agent
+- Shared conventions (loaded from `skills/_shared/`)
+
+## Why This Architecture?
+
+### Separation of Concerns
+Each sub-agent has a single, well-defined responsibility. The orchestrator doesn't need to know HOW to write specs — it just needs to know WHEN to launch the spec-writer.
+
+### Reusability
+Sub-agents can be composed into different workflows. For example:
+- `/sdd-new` launches: explore → propose → spec → design → tasks
+- `/sdd-continue` launches: apply → verify
+- `/sdd-explore` launches: explore only
+
+### Testability
+Each sub-agent can be tested in isolation by passing it a mock context and validating the result envelope.
+
+### Extensibility
+New sub-agents can be added without modifying the orchestrator's core logic. Just add a new skill and teach the orchestrator when to trigger it.
+
+## Version 2.0 Enhancements
+
+Agent Teams Lite v2.0 introduced:
+
+- **TDD support in `sdd-apply`**: Detects TDD mode and follows RED → GREEN → REFACTOR
+- **Real execution in `sdd-verify`**: Runs tests and builds, not just static analysis
+- **Spec compliance matrix**: Cross-references spec scenarios with test results
+- **Coverage validation**: Optional coverage threshold enforcement
+- **Behavioral evidence**: Verification now requires PASSING tests, not just code existence
+
+See the [Implementer](/sub-agents/implementer) and [Verifier](/sub-agents/verifier) docs for details.

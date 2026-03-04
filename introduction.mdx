@@ -1,0 +1,222 @@
+---
+title: "Introduction to Agent Teams Lite"
+description: "Agent-Team Orchestration with AI Sub-Agents for structured feature development. Zero dependencies. Pure Markdown. Works everywhere."
+---
+
+## The Problem
+
+AI coding assistants are powerful, but they struggle with complex features:
+
+- **Context overload** — Long conversations lead to compression, lost details, hallucinations
+- **No structure** — "Build me dark mode" produces unpredictable results
+- **No review gate** — Code gets written before anyone agrees on what to build
+- **No memory** — Specs live in chat history that vanishes
+
+## The Solution
+
+**Agent Teams Lite** is an agent-team orchestration pattern where a lightweight coordinator delegates all real work to specialized sub-agents. Each sub-agent starts with fresh context, executes one focused task, and returns a structured result.
+
+<Note>
+The key insight: the orchestrator NEVER does phase work directly. It only coordinates sub-agents, tracks state, and synthesizes summaries. This keeps the main thread small and stable.
+</Note>
+
+### How It Works
+
+```
+YOU: "I want to add CSV export to the app"
+
+ORCHESTRATOR (delegate-only, minimal context):
+  → launches EXPLORER sub-agent     → returns: codebase analysis
+  → shows you summary, you approve
+  → launches PROPOSER sub-agent     → returns: proposal artifact
+  → launches SPEC WRITER sub-agent  → returns: spec artifact
+  → launches DESIGNER sub-agent     → returns: design artifact
+  → launches TASK PLANNER sub-agent → returns: tasks artifact
+  → shows you everything, you approve
+  → launches IMPLEMENTER sub-agent  → returns: code written, tasks checked off
+  → launches VERIFIER sub-agent     → returns: verification artifact
+  → launches ARCHIVER sub-agent     → returns: change closed
+```
+
+## Where Agent Teams Lite Fits
+
+Agent Teams Lite sits between basic sub-agent patterns and full Agent Teams runtimes:
+
+<CardGroup cols={3}>
+  <Card title="Level 1: Basic Subagents" icon="layer-group">
+    Fire-and-forget sub-agents with no state management or coordination
+  </Card>
+  <Card title="Level 2: Agent Teams Lite ⭐" icon="diagram-project" color="#4CAF50">
+    Delegate-only orchestrator with DAG-based phases and pluggable storage
+  </Card>
+  <Card title="Level 3: Full Agent Teams" icon="network-wired">
+    Shared task queue with claim/heartbeat and peer-to-peer communication
+  </Card>
+</CardGroup>
+
+### Capability Comparison
+
+| Capability | Basic Subagents | Agent Teams Lite | Full Agent Teams |
+|---|:---:|:---:|:---:|
+| Delegate-only lead | — | ✅ | ✅ |
+| DAG-based phase orchestration | — | ✅ | ✅ |
+| Parallel phases (spec ∥ design) | — | ✅ | ✅ |
+| Structured result envelope | — | ✅ | ✅ |
+| Pluggable artifact store | — | ✅ | ✅ |
+| Shared task queue with claim/heartbeat | — | — | ✅ |
+| Teammate ↔ teammate communication | — | — | ✅ |
+| Dynamic work stealing | — | — | ✅ |
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Zero Dependencies" icon="feather">
+    Pure Markdown skills. No npm packages, no build steps, no runtime dependencies.
+  </Card>
+  <Card title="Fresh Context Per Phase" icon="sparkles">
+    Each sub-agent starts with clean context, reducing hallucinations and improving output quality.
+  </Card>
+  <Card title="Pluggable Persistence" icon="database">
+    Choose between Engram (recommended), OpenSpec (file-based), or none (ephemeral).
+  </Card>
+  <Card title="Works Everywhere" icon="globe">
+    Any AI assistant that can read Markdown files can use these skills.
+  </Card>
+  <Card title="Structured Workflow" icon="sitemap">
+    DAG-based dependency graph ensures phases execute in the right order.
+  </Card>
+  <Card title="TDD Support" icon="vial">
+    v2.0 skills include optional Test-Driven Development workflow.
+  </Card>
+</CardGroup>
+
+## Persistence Is Pluggable
+
+The workflow engine is storage-agnostic. Artifacts can be persisted in:
+
+- **engram** (recommended default) — [https://github.com/gentleman-programming/engram](https://github.com/gentleman-programming/engram)
+- **openspec** (file-based, optional)
+- **none** (ephemeral, no persistence)
+
+<Info>
+Default policy is conservative:
+- If Engram is available, persist to Engram (recommended)
+- If user explicitly asks for file artifacts, use `openspec`
+- Otherwise use `none` (no writes)
+- `openspec` is NEVER chosen automatically — only when the user explicitly asks
+</Info>
+
+### Quick Modes
+
+Choose the right mode for your use case:
+
+<CodeGroup>
+
+```yaml Recommended: Engram
+# Agent-team storage policy
+artifact_store:
+  mode: engram      # Persistent, repo-clean
+```
+
+```yaml Privacy/Local-Only
+# No persistence
+artifact_store:
+  mode: none
+```
+
+```yaml File Artifacts
+# OpenSpec flow (explicit only)
+artifact_store:
+  mode: openspec
+```
+
+</CodeGroup>
+
+## The Sub-Agents
+
+Each sub-agent is a `SKILL.md` file — pure Markdown instructions that any AI assistant can follow.
+
+<CardGroup cols={3}>
+  <Card title="Init" icon="play">
+    Detects project stack and bootstraps persistence backend
+  </Card>
+  <Card title="Explorer" icon="magnifying-glass">
+    Investigates codebase, compares approaches, identifies risks
+  </Card>
+  <Card title="Proposer" icon="lightbulb">
+    Creates proposal with intent, scope, and rollback plan
+  </Card>
+  <Card title="Spec Writer" icon="file-contract">
+    Writes delta specs with Given/When/Then scenarios
+  </Card>
+  <Card title="Designer" icon="compass-drafting">
+    Creates architecture decisions with rationale
+  </Card>
+  <Card title="Task Planner" icon="list-check">
+    Breaks down into phased, numbered task checklist
+  </Card>
+  <Card title="Implementer" icon="code">
+    Writes code following specs and design. v2.0: TDD workflow support
+  </Card>
+  <Card title="Verifier" icon="shield-check">
+    Validates implementation against specs. v2.0: real test execution
+  </Card>
+  <Card title="Archiver" icon="box-archive">
+    Merges delta specs into main specs, moves to archive
+  </Card>
+</CardGroup>
+
+## Why Not Just Use OpenSpec?
+
+[OpenSpec](https://openspec.dev) is great. We took heavy inspiration from it. But:
+
+| | OpenSpec | Agent Teams Lite |
+|---|---|---|
+| **Dependencies** | Requires `npm install -g @fission-ai/openspec` | Zero. Pure Markdown files. |
+| **Sub-agents** | Runs inline (one context window) | True sub-agent delegation (fresh context per phase) |
+| **Context usage** | Everything in one conversation | Orchestrator stays lightweight, sub-agents get fresh context |
+| **Customization** | Edit YAML schemas + rebuild | Edit Markdown files, instant effect |
+| **Tool support** | 20+ tools via CLI | Any tool that can read Markdown (infinite) |
+| **Setup** | CLI init + slash commands | Copy files + go |
+
+<Warning>
+**The key difference is the sub-agent architecture.** OpenSpec runs everything in a single conversation context. Agent Teams Lite uses the Task tool to spawn fresh-context sub-agents, keeping the orchestrator's context window clean.
+</Warning>
+
+This means:
+- Less context compression = fewer hallucinations
+- Each sub-agent gets focused instructions = better output quality
+- Orchestrator stays lightweight = can handle longer feature development sessions
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Quick Start"
+    icon="rocket"
+    href="/quickstart"
+  >
+    Get Agent Teams Lite running in 5 minutes
+  </Card>
+  <Card
+    title="How It Works"
+    icon="circle-info"
+    href="/how-it-works"
+  >
+    Deep dive into the architecture and workflow
+  </Card>
+  <Card
+    title="Installation"
+    icon="download"
+    href="/installation/overview"
+  >
+    Setup guides for all supported AI tools
+  </Card>
+  <Card
+    title="Commands"
+    icon="terminal"
+    href="/commands/overview"
+  >
+    Learn all the SDD commands
+  </Card>
+</CardGroup>

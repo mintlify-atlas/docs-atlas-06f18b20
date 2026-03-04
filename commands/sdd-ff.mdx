@@ -1,0 +1,383 @@
+---
+title: /sdd-ff
+description: Fast-forward through all planning phases at once
+---
+
+## Overview
+
+The `/sdd-ff` command runs all planning sub-agents in sequence (proposal → specs → design → tasks) without pausing for approval between phases. It's designed for experienced users who want rapid planning.
+
+<Warning>
+This command generates 4 artifacts in one go. Review the complete plan carefully before running `/sdd-apply`.
+</Warning>
+
+## Usage
+
+```bash
+/sdd-ff <change-name>
+```
+
+<ParamField path="change-name" type="string" required>
+  Unique identifier for this change. Use kebab-case (e.g., `add-csv-export`, `refactor-auth`).
+</ParamField>
+
+## What It Does
+
+### Phase Sequence
+
+Runs these sub-agents consecutively:
+
+<Steps>
+  <Step title="1. Exploration">
+    Investigates codebase, compares approaches, identifies risks
+  </Step>
+  <Step title="2. Proposal">
+    Creates proposal.md with intent, scope, approach, risks
+  </Step>
+  <Step title="3. Specs (Parallel)">
+    Writes requirements and scenarios using Given/When/Then
+  </Step>
+  <Step title="4. Design (Parallel)">
+    Creates technical design with architecture decisions
+  </Step>
+  <Step title="5. Tasks">
+    Breaks down implementation into phased checklist
+  </Step>
+</Steps>
+
+<Info>
+Specs and Design run in parallel since they have no dependency on each other.
+</Info>
+
+### 2. Single Combined Summary
+
+After ALL phases complete, shows:
+- Executive summary of each phase
+- Total artifacts created
+- Risk assessment
+- Implementation readiness
+
+### 3. Ready for Implementation
+
+Change is immediately ready for `/sdd-apply`.
+
+## Example Usage
+
+### Fast-Forward a Feature
+
+```bash
+/sdd-ff add-csv-export
+```
+
+**Output:**
+
+```markdown
+## Fast-forwarding planning for: add-csv-export
+
+Running 5 phases: explore → propose → [specs ∥ design] → tasks
+
+---
+
+## Phase 1: Exploration ✓
+
+Investigated export functionality in codebase.
+- Found existing JSON export in `src/api/export.ts`
+- Identified data serialization utilities in `src/utils/`
+- Compared approaches: csv-stringify vs manual builder
+- Recommendation: Use csv-stringify library (proven, handles edge cases)
+
+---
+
+## Phase 2: Proposal ✓
+
+Created proposal: Add CSV export capability to observations API
+
+**Intent**: Users need CSV format for Excel compatibility and data analysis
+**Scope**: 
+  - IN: CSV endpoint, column mapping, file download
+  - OUT: Custom column selection, scheduled exports
+**Risk Level**: Low
+
+---
+
+## Phase 3: Specifications ✓
+
+Wrote 2 spec files:
+- `specs/api/csv-export.md` - 4 requirements, 8 scenarios
+- `specs/ui/export-button.md` - 2 requirements, 4 scenarios
+
+Key requirements:
+- SHALL support UTF-8 encoding with BOM for Excel
+- SHALL include column headers in first row
+- SHOULD handle special characters (quotes, commas, newlines)
+- MAY support custom date formats
+
+---
+
+## Phase 4: Design ✓
+
+Created technical design:
+
+**Architecture**:
+- New route: `GET /api/observations/export?format=csv`
+- CSV serialization service using csv-stringify
+- Response headers: Content-Type + Content-Disposition
+
+**Design Decisions**:
+1. Stream-based approach for large datasets (memory efficient)
+2. UTF-8 with BOM for Excel compatibility
+3. ISO 8601 dates (Excel auto-recognizes)
+4. Quote all string fields (prevents injection)
+
+**Sequence Diagram**:
+[User] → [Export Button] → [API] → [CSV Service] → [Response Stream]
+
+---
+
+## Phase 5: Tasks ✓
+
+Broke down into 3 phases, 7 tasks:
+
+**Phase 1: Backend (3 tasks)**
+- [ ] 1.1 Add csv-stringify dependency
+- [ ] 1.2 Create CSV serialization service
+- [ ] 1.3 Add export route handler
+
+**Phase 2: Frontend (3 tasks)**
+- [ ] 2.1 Add Export CSV button to UI
+- [ ] 2.2 Wire up download handler
+- [ ] 2.3 Add loading state during export
+
+**Phase 3: Testing (1 task)**
+- [ ] 3.1 Write integration tests for CSV endpoint
+
+---
+
+## Planning Complete ✓
+
+### Artifacts Created
+- openspec/changes/add-csv-export/exploration.md
+- openspec/changes/add-csv-export/proposal.md
+- openspec/changes/add-csv-export/specs/api/csv-export.md
+- openspec/changes/add-csv-export/specs/ui/export-button.md
+- openspec/changes/add-csv-export/design.md
+- openspec/changes/add-csv-export/tasks.md
+
+### Summary
+- **Complexity**: Low-Medium (1-2 days)
+- **Risk Level**: Low
+- **Tasks**: 7 across 3 phases
+- **Tests Required**: Yes (1 integration test task)
+
+### Next Step
+Ready to implement. Run `/sdd-apply` to start Phase 1.
+```
+
+### Fast-Forward a Refactoring
+
+```bash
+/sdd-ff migrate-jest-to-vitest
+```
+
+**Output:**
+
+```markdown
+## Fast-forwarding planning for: migrate-jest-to-vitest
+
+Running 5 phases: explore → propose → [specs ∥ design] → tasks
+
+---
+
+## Phase 1: Exploration ✓
+
+Analyzed test infrastructure:
+- 47 Jest test files across 3 directories
+- Custom Jest matchers in `src/test/matchers.ts`
+- jsdom environment for DOM testing
+- Coverage threshold: 80% configured in jest.config.js
+
+Recommended approach: Incremental migration (tests continue passing)
+
+---
+
+## Phase 2: Proposal ✓
+
+**Intent**: Migrate to Vitest for faster test execution and ESM support
+**Benefits**: 3-5x faster tests, native ESM, same API as Jest
+**Scope**:
+  - IN: Vitest config, migrate test files, replace matchers
+  - OUT: Snapshot format changes, test utils rewrite
+**Risk Level**: Medium (breaking tests temporarily)
+
+---
+
+## Phase 3: Specifications ✓
+
+1 spec file created:
+- `specs/testing/vitest-migration.md` - 6 requirements, 12 scenarios
+
+Key requirements:
+- ALL existing tests MUST pass after migration
+- Coverage threshold MUST remain 80%
+- Test execution SHOULD be at least 2x faster
+
+---
+
+## Phase 4: Design ✓
+
+**Migration Strategy**:
+1. Install Vitest alongside Jest (temporary coexistence)
+2. Create vitest.config.ts matching jest.config.js
+3. Migrate custom matchers
+4. Migrate test files one directory at a time
+5. Remove Jest after all tests converted
+
+**Compatibility**:
+- @vitest/ui for test UI
+- happy-dom instead of jsdom (faster)
+- vi instead of jest mock functions
+
+---
+
+## Phase 5: Tasks ✓
+
+4 phases, 11 tasks:
+
+**Phase 1: Setup (2 tasks)**
+- [ ] 1.1 Install Vitest + plugins
+- [ ] 1.2 Create vitest.config.ts
+
+**Phase 2: Migrate Utilities (2 tasks)**
+- [ ] 2.1 Convert custom matchers
+- [ ] 2.2 Update test helpers
+
+**Phase 3: Migrate Tests (4 tasks)**
+- [ ] 3.1 Migrate src/utils tests (12 files)
+- [ ] 3.2 Migrate src/components tests (23 files)
+- [ ] 3.3 Migrate src/api tests (8 files)
+- [ ] 3.4 Migrate integration tests (4 files)
+
+**Phase 4: Cleanup (3 tasks)**
+- [ ] 4.1 Remove Jest dependencies
+- [ ] 4.2 Delete jest.config.js
+- [ ] 4.3 Update CI scripts
+
+---
+
+## Planning Complete ✓
+
+### Summary
+- **Complexity**: Medium-High (2-3 days)
+- **Risk Level**: Medium
+- **Tasks**: 11 across 4 phases
+- **Rollback**: Keep Jest installed until Phase 4
+
+### Next Step
+Run `/sdd-apply` to begin migration.
+```
+
+## When to Use
+
+<CardGroup cols={2}>
+  <Card title="Experienced Users" icon="user-ninja">
+    You've used SDD before and trust the planning
+  </Card>
+  <Card title="Time Pressure" icon="clock">
+    Need to start coding quickly
+  </Card>
+  <Card title="Small Changes" icon="puzzle-piece">
+    Low-risk changes with obvious approach
+  </Card>
+  <Card title="Solo Development" icon="user">
+    No team review needed between phases
+  </Card>
+</CardGroup>
+
+<Warning>
+**When NOT to use /sdd-ff:**
+- First time using SDD (use `/sdd-new` + `/sdd-continue` to learn)
+- High-risk architectural changes (review each phase)
+- Team collaboration required (pause between phases)
+- Unclear requirements (explore first with `/sdd-explore`)
+</Warning>
+
+## Comparison with Other Commands
+
+| Command | Phases | Pauses | Use Case |
+|---------|--------|--------|----------|
+| `/sdd-new` | explore + propose | After proposal | Start with review |
+| `/sdd-continue` | 1 phase at a time | After each phase | Step-by-step |
+| `/sdd-ff` | All 5 planning | After all complete | Speed run |
+
+## Review Checklist
+
+After `/sdd-ff` completes, review these artifacts:
+
+<AccordionGroup>
+  <Accordion title="proposal.md">
+    - [ ] Intent is clear and justified
+    - [ ] Scope is appropriate (not too large)
+    - [ ] Rollback plan is realistic
+    - [ ] Risks are identified with mitigations
+  </Accordion>
+  
+  <Accordion title="specs/*.md">
+    - [ ] Requirements use RFC 2119 keywords correctly
+    - [ ] Scenarios cover happy path + edge cases
+    - [ ] Given/When/Then format is clear
+    - [ ] Acceptance criteria are testable
+  </Accordion>
+  
+  <Accordion title="design.md">
+    - [ ] Architectural decisions have rationale
+    - [ ] Approach aligns with existing patterns
+    - [ ] Trade-offs are acknowledged
+    - [ ] Diagrams clarify complex flows
+  </Accordion>
+  
+  <Accordion title="tasks.md">
+    - [ ] Tasks are small enough (under 4 hours each)
+    - [ ] Phases are logical groupings
+    - [ ] Dependencies between tasks are clear
+    - [ ] Total estimate seems reasonable
+  </Accordion>
+</AccordionGroup>
+
+## Revising After Fast-Forward
+
+If you need to revise any artifact:
+
+```bash
+# Edit the artifact file directly
+vim openspec/changes/add-csv-export/proposal.md
+
+# Or ask the orchestrator to revise
+"Revise the proposal to add PDF export to the scope"
+
+# Then continue
+/sdd-apply
+```
+
+<Tip>
+The orchestrator will detect manual edits and incorporate them when running `/sdd-apply`.
+</Tip>
+
+## Performance
+
+Fast-forward typically takes:
+- **Small changes**: 2-4 minutes
+- **Medium changes**: 4-8 minutes
+- **Large changes**: 8-15 minutes
+
+Time depends on:
+- Codebase size
+- Complexity of analysis
+- Number of affected areas
+- Spec scenario count
+
+## Related Commands
+
+- [/sdd-new](/commands/sdd-new) - Start with exploration + proposal only
+- [/sdd-continue](/commands/sdd-continue) - Progress one phase at a time
+- [/sdd-apply](/commands/sdd-apply) - Implement after fast-forward
+- [/sdd-explore](/commands/sdd-explore) - Research before fast-forwarding

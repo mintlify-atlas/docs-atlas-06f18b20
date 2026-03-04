@@ -1,0 +1,298 @@
+---
+title: /sdd-new
+description: Start a new SDD change with exploration and proposal
+---
+
+## Overview
+
+The `/sdd-new` command starts a structured change by launching exploration and proposal sub-agents in sequence. It's the entry point for all feature development in the SDD workflow.
+
+<Info>
+This command combines exploration + proposal generation. Use `/sdd-ff` if you want to skip to full planning.
+</Info>
+
+## Usage
+
+```bash
+/sdd-new <change-name>
+```
+
+<ParamField path="change-name" type="string" required>
+  Unique identifier for this change. Use kebab-case (e.g., `add-dark-mode`, `fix-auth-bug`).
+</ParamField>
+
+## What It Does
+
+### 1. Launches Explorer Sub-Agent
+
+First, explores the codebase for the requested change:
+- Reads relevant code
+- Identifies affected areas
+- Compares implementation approaches
+- Assesses risks
+
+### 2. Shows Exploration Summary
+
+The orchestrator presents:
+- Recommended approach
+- Affected files/modules
+- Risk level
+- Complexity estimate
+
+### 3. Launches Proposer Sub-Agent
+
+Creates a structured proposal with:
+- **Intent** - What problem we're solving
+- **Scope** - What's in/out of scope
+- **Approach** - High-level technical solution
+- **Affected Areas** - Code areas that will change
+- **Risks** - Potential issues with mitigation
+- **Rollback Plan** - How to revert if needed
+- **Success Criteria** - How to measure completion
+
+### 4. Asks for Continuation
+
+Prompts the user:
+```
+Want me to continue with specs and design? (or review the proposal first)
+```
+
+## Example Usage
+
+### Starting a Feature
+
+```bash
+/sdd-new add-dark-mode
+```
+
+**Output:**
+
+```markdown
+## Launching explorer sub-agent...
+
+✓ Codebase analyzed. React + Tailwind detected.
+✓ Current theme: hardcoded light mode in globals.css
+✓ 12 components reference color values directly
+
+### Exploration Summary
+**Approach**: CSS custom properties + React Context
+**Affected Areas**: Theme system, 12 components, layout wrapper
+**Complexity**: Medium (2-3 days)
+**Risk**: Medium - Requires testing all UI states
+
+---
+
+## Launching proposal sub-agent...
+
+✓ proposal.md created
+
+### Proposal Summary
+**Intent**: Add user-toggleable dark mode with system preference detection
+**Scope**: 
+  - IN: Theme toggle component, CSS variables, localStorage persistence
+  - OUT: Per-component theme overrides, theme customization API
+**Approach**: CSS custom properties for colors + React Context for state
+**Risk Level**: Medium
+
+### Artifacts Created
+- openspec/changes/add-dark-mode/exploration.md
+- openspec/changes/add-dark-mode/proposal.md
+
+---
+
+Want me to continue with specs and design? (or review the proposal first)
+```
+
+### Starting a Bug Fix
+
+```bash
+/sdd-new fix-auth-token-refresh
+```
+
+**Output:**
+
+```markdown
+## Launching explorer sub-agent...
+
+✓ Token refresh logic found in src/auth/token-manager.ts
+✓ Issue identified: Race condition when multiple requests trigger refresh
+✓ Existing tests: 3 auth tests, none cover concurrent refresh
+
+### Exploration Summary
+**Approach**: Mutex lock pattern with promise queue
+**Affected Areas**: Token manager, HTTP interceptor
+**Complexity**: Low (4-6 hours)
+**Risk**: Low - Well-isolated change
+
+---
+
+## Launching proposal sub-agent...
+
+✓ proposal.md created
+
+### Proposal Summary
+**Intent**: Fix race condition in token refresh causing 401 errors
+**Scope**:
+  - IN: Mutex for refresh, promise queue, concurrent refresh tests
+  - OUT: Token rotation, refresh token storage changes
+**Approach**: Single in-flight refresh with waiting queue
+**Risk Level**: Low
+
+### Artifacts Created
+- openspec/changes/fix-auth-token-refresh/exploration.md
+- openspec/changes/fix-auth-token-refresh/proposal.md
+
+---
+
+Want me to continue with specs and design?
+```
+
+## Workflow After /sdd-new
+
+After reviewing the proposal, you have several options:
+
+<CardGroup cols={2}>
+  <Card title="Continue Step-by-Step" icon="arrow-right">
+    ```bash
+    /sdd-continue
+    ```
+    Run next phase (specs), then design, then tasks
+  </Card>
+  <Card title="Fast-Forward Planning" icon="forward-fast">
+    ```bash
+    /sdd-ff add-dark-mode
+    ```
+    Generate specs + design + tasks in one go
+  </Card>
+  <Card title="Revise Proposal" icon="pencil">
+    Edit `proposal.md` manually, then continue
+  </Card>
+  <Card title="Abandon Change" icon="xmark">
+    Delete the change folder if approach isn't viable
+  </Card>
+</CardGroup>
+
+## Directory Structure Created
+
+When using `openspec` mode:
+
+```
+openspec/changes/add-dark-mode/
+├── exploration.md    # Codebase analysis
+└── proposal.md       # Change proposal
+```
+
+When using `engram` mode:
+
+- `sdd/add-dark-mode/explore` - Exploration artifact
+- `sdd/add-dark-mode/proposal` - Proposal artifact
+
+## Proposal Format
+
+The generated `proposal.md` follows this structure:
+
+```markdown
+# Proposal: Add Dark Mode
+
+## Intent
+Users have requested dark mode for reduced eye strain during night usage.
+Current app only supports light theme. 40% of user sessions happen after 8pm.
+
+## Scope
+
+### In Scope
+- Dark mode toggle component in header
+- CSS custom properties for theme colors
+- System preference detection (prefers-color-scheme)
+- localStorage persistence of user choice
+- Documentation for theme color usage
+
+### Out of Scope
+- Per-component theme overrides
+- Theme customization API for users
+- Multiple theme options beyond dark/light
+- Automatic switching based on time
+
+## Approach
+Implement CSS custom properties for all colors. Create React Context for theme
+state. Detect system preference on mount. Allow manual override via toggle.
+Persist choice in localStorage.
+
+## Affected Areas
+
+| Area | Impact | Description |
+|------|--------|-------------|
+| `src/styles/globals.css` | Modified | Add CSS custom properties |
+| `src/components/Layout.tsx` | Modified | Wrap with ThemeProvider |
+| `src/components/ThemeToggle.tsx` | New | Toggle component |
+| `src/context/ThemeContext.tsx` | New | Theme state management |
+| `src/hooks/useTheme.ts` | New | Theme hook |
+
+## Risks
+
+| Risk | Likelihood | Mitigation |
+|------|------------|------------|
+| CSS specificity conflicts | Medium | Use CSS cascade layers |
+| Flash of wrong theme on load | High | Inline script in HTML head |
+| Missed color references | Medium | Comprehensive component testing |
+
+## Rollback Plan
+1. Remove ThemeProvider from Layout
+2. Delete new theme files
+3. Revert globals.css to previous version
+4. Deploy - app returns to light mode only
+
+## Dependencies
+- None
+
+## Success Criteria
+- [ ] Users can toggle between light and dark modes
+- [ ] System preference is detected and respected
+- [ ] User choice persists across sessions
+- [ ] No flash of unstyled content on page load
+- [ ] All UI components render correctly in both themes
+```
+
+## When to Use
+
+<CardGroup cols={2}>
+  <Card title="New Features" icon="sparkles">
+    Starting any user-facing feature development
+  </Card>
+  <Card title="Bug Fixes" icon="bug">
+    Fixes that require architectural changes
+  </Card>
+  <Card title="Refactoring" icon="arrows-rotate">
+    Significant code restructuring
+  </Card>
+  <Card title="Technical Debt" icon="wrench">
+    Addressing systemic issues
+  </Card>
+</CardGroup>
+
+<Warning>
+Don't use `/sdd-new` for:
+- Trivial typo fixes
+- Single-line changes
+- Documentation updates
+- Config tweaks
+
+Use SDD for changes that need design thinking.
+</Warning>
+
+## Command Parameters
+
+<ParamField path="change-name" type="string" required>
+  Change identifier. Must be:
+  - Unique within the project
+  - Kebab-case format
+  - Descriptive (not "change1" or "fix")
+  - Between 3-50 characters
+</ParamField>
+
+## Related Commands
+
+- [/sdd-explore](/commands/sdd-explore) - Research before creating a change
+- [/sdd-ff](/commands/sdd-ff) - Fast-forward to full planning
+- [/sdd-continue](/commands/sdd-continue) - Proceed with next phase
+- [/sdd-apply](/commands/sdd-apply) - Implement after planning

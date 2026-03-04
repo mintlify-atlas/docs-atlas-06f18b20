@@ -1,0 +1,302 @@
+---
+title: Spec Writer Sub-Agent
+description: Write specifications with requirements and scenarios
+---
+
+The **sdd-spec** sub-agent writes structured specifications with requirements (using RFC 2119 keywords) and scenarios (using Given/When/Then format). For existing domains, it writes **delta specs** that describe what's being ADDED, MODIFIED, or REMOVED.
+
+## Metadata
+
+<ResponseField name="name" type="string">
+`sdd-spec`
+</ResponseField>
+
+<ResponseField name="version" type="string">
+`2.0`
+</ResponseField>
+
+<ResponseField name="author" type="string">
+`gentleman-programming`
+</ResponseField>
+
+<ResponseField name="license" type="string">
+`MIT`
+</ResponseField>
+
+## When It's Triggered
+
+The orchestrator launches `sdd-spec` when:
+- User runs `/sdd-new <change-name>` (after proposal)
+- User wants to write or update specifications
+- Proposal is complete and ready for behavioral specification
+
+## What It Does
+
+### Step 1: Identify Affected Domains
+
+From the proposal's "Affected Areas", determines which spec domains are touched. Groups changes by domain (e.g., `auth/`, `payments/`, `ui/`).
+
+### Step 2: Read Existing Specs
+
+If `openspec/specs/{domain}/spec.md` exists, reads it to understand **CURRENT behavior**. Delta specs describe CHANGES to this behavior.
+
+### Step 3: Write Delta Specs
+
+Creates specs inside the change folder:
+
+```
+openspec/changes/{change-name}/
+├── proposal.md              ← (already exists)
+└── specs/
+    └── {domain}/
+        └── spec.md          ← Delta spec
+```
+
+## Delta Spec Format
+
+For domains with **existing specs**:
+
+```markdown
+# Delta for {Domain}
+
+## ADDED Requirements
+
+### Requirement: {Requirement Name}
+
+{Description using RFC 2119 keywords: MUST, SHALL, SHOULD, MAY}
+
+The system {MUST/SHALL/SHOULD} {do something specific}.
+
+#### Scenario: {Happy path scenario}
+
+- GIVEN {precondition}
+- WHEN {action}
+- THEN {expected outcome}
+- AND {additional outcome, if any}
+
+#### Scenario: {Edge case scenario}
+
+- GIVEN {precondition}
+- WHEN {action}
+- THEN {expected outcome}
+
+## MODIFIED Requirements
+
+### Requirement: {Existing Requirement Name}
+
+{New description — replaces the existing one}
+(Previously: {what it was before})
+
+#### Scenario: {Updated scenario}
+
+- GIVEN {updated precondition}
+- WHEN {updated action}
+- THEN {updated outcome}
+
+## REMOVED Requirements
+
+### Requirement: {Requirement Being Removed}
+
+(Reason: {why this requirement is being deprecated/removed})
+```
+
+## Full Spec Format
+
+For **NEW domains** (no existing spec):
+
+```markdown
+# {Domain} Specification
+
+## Purpose
+
+{High-level description of this spec's domain.}
+
+## Requirements
+
+### Requirement: {Name}
+
+The system {MUST/SHALL/SHOULD} {behavior}.
+
+#### Scenario: {Name}
+
+- GIVEN {precondition}
+- WHEN {action}
+- THEN {outcome}
+```
+
+## RFC 2119 Keywords
+
+Use these keywords to express requirement strength:
+
+| Keyword | Meaning |
+|---------|---------|
+| **MUST / SHALL** | Absolute requirement |
+| **MUST NOT / SHALL NOT** | Absolute prohibition |
+| **SHOULD** | Recommended, but exceptions may exist with justification |
+| **SHOULD NOT** | Not recommended, but may be acceptable with justification |
+| **MAY** | Optional |
+
+## Example: Delta Spec
+
+```markdown
+# Delta for UI/Theme
+
+## ADDED Requirements
+
+### Requirement: Theme Toggle
+
+The system MUST provide a user interface control that allows users to switch between light and dark themes.
+
+#### Scenario: User toggles to dark mode
+
+- GIVEN the user is viewing the app in light mode
+- WHEN the user clicks the theme toggle button
+- THEN the app MUST switch to dark mode
+- AND the theme choice MUST be saved to localStorage
+
+#### Scenario: Theme persists across sessions
+
+- GIVEN the user previously selected dark mode
+- WHEN the user returns to the app in a new session
+- THEN the app MUST load in dark mode automatically
+
+#### Scenario: Graceful fallback
+
+- GIVEN localStorage is unavailable (private browsing mode)
+- WHEN the user toggles the theme
+- THEN the theme MUST change for the current session
+- AND the app MUST default to light mode on next load
+
+### Requirement: Theme CSS Variables
+
+The system MUST use CSS custom properties for all theme-dependent color values.
+
+#### Scenario: Dark mode applies correct colors
+
+- GIVEN the user has selected dark mode
+- WHEN the page renders
+- THEN all UI components MUST use the dark color palette
+- AND text MUST remain readable (WCAG AA contrast ratio)
+
+## MODIFIED Requirements
+
+None.
+
+## REMOVED Requirements
+
+None.
+```
+
+## Example: Full Spec (New Domain)
+
+```markdown
+# Authentication Specification
+
+## Purpose
+
+This specification defines how users authenticate and maintain sessions in the application.
+
+## Requirements
+
+### Requirement: User Login
+
+The system MUST allow users to log in with a valid email and password.
+
+#### Scenario: Successful login
+
+- GIVEN a registered user with email "user@example.com" and password "securepass123"
+- WHEN the user submits the login form with correct credentials
+- THEN the system MUST authenticate the user
+- AND the system MUST create a session token
+- AND the system MUST redirect the user to the dashboard
+
+#### Scenario: Invalid credentials
+
+- GIVEN a user attempts to log in
+- WHEN the user submits incorrect credentials
+- THEN the system MUST reject the login attempt
+- AND the system MUST display an error message "Invalid email or password"
+- AND the system MUST NOT reveal which field was incorrect
+
+### Requirement: Session Expiration
+
+The system SHALL expire user sessions after 24 hours of inactivity.
+
+#### Scenario: Session expires after 24 hours
+
+- GIVEN a user logged in 25 hours ago
+- WHEN the user attempts to access a protected resource
+- THEN the system MUST reject the request
+- AND the system MUST redirect the user to the login page
+```
+
+## Result Envelope Example
+
+```markdown
+## Specs Created
+
+**Change**: add-dark-mode
+
+### Specs Written
+| Domain | Type | Requirements | Scenarios |
+|--------|------|-------------|-----------|
+| ui/theme | Delta | 2 added, 0 modified, 0 removed | 4 |
+
+### Coverage
+- Happy paths: covered
+- Edge cases: covered (localStorage unavailable)
+- Error states: N/A (no error states in this change)
+
+### Next Step
+Ready for design (sdd-design). If design already exists, ready for tasks (sdd-tasks).
+```
+
+## Rules
+
+- **ALWAYS use Given/When/Then format** for scenarios
+- **ALWAYS use RFC 2119 keywords** (MUST, SHALL, SHOULD, MAY) for requirement strength
+- If existing specs exist, write **DELTA specs** (ADDED/MODIFIED/REMOVED sections)
+- If NO existing specs exist for the domain, write a **FULL spec**
+- Every requirement **MUST have at least ONE scenario**
+- Include **both happy path AND edge case** scenarios
+- Keep scenarios **TESTABLE** — someone should be able to write an automated test from each one
+- **DO NOT include implementation details** in specs — specs describe WHAT, not HOW
+- Apply any `rules.specs` from `openspec/config.yaml`
+- Return a structured envelope with: `status`, `executive_summary`, `detailed_report`, `artifacts`, `next_recommended`, and `risks`
+
+## Scenario Writing Tips
+
+### Good Scenario
+```
+- GIVEN the user has selected dark mode
+- WHEN the page renders
+- THEN all UI components use the dark color palette
+```
+
+### Bad Scenario (too vague)
+```
+- GIVEN dark mode is on
+- THEN it looks dark
+```
+
+### Good Scenario (edge case)
+```
+- GIVEN localStorage is unavailable
+- WHEN the user toggles the theme
+- THEN the theme changes for the current session only
+```
+
+### Bad Scenario (includes HOW)
+```
+- WHEN the user clicks the toggle button
+- THEN React Context updates state and calls setTheme()
+```
+
+Don't specify implementation details like "React Context" or function names. Focus on **observable behavior**.
+
+## Related
+
+- [Proposer](/sub-agents/proposer) — Creates the proposal that informs specs
+- [Designer](/sub-agents/designer) — Uses specs to create technical design
+- [Verifier](/sub-agents/verifier) — Validates implementation against specs
+- [OpenSpec Convention](/sub-agents/openspec-convention)

@@ -1,97 +1,346 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: Agent Teams Lite Documentation
+description: Spec-Driven Development with AI Sub-Agents - An orchestrator + 9 specialized sub-agents for structured feature development using pure Markdown.
+mode: custom
 ---
 
-## Setting up
+<div className="relative overflow-hidden bg-gradient-to-br from-[#0f1117] via-[#1a1d27] to-[#0f1117] dark:from-[#0f1117] dark:via-[#1a1d27] dark:to-[#0f1117]">
+  <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjAzKSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-40"></div>
+  
+  <div className="relative max-w-7xl mx-auto px-6 sm:px-8 py-20 sm:py-24 lg:py-28">
+    <div className="grid lg:grid-cols-12 gap-12 items-center">
+      <div className="lg:col-span-7">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#b38135]/10 dark:bg-[#b38135]/10 border border-[#b38135]/20 dark:border-[#b38135]/20 mb-6">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#b38135] opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-[#b38135]"></span>
+          </span>
+          <span className="text-sm font-medium text-gray-100 dark:text-gray-100">Zero dependencies • Pure Markdown • Works everywhere</span>
+        </div>
+        
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white dark:text-white mb-6 leading-tight">
+          Agent Teams Lite
+        </h1>
+        
+        <p className="text-xl sm:text-2xl text-gray-300 dark:text-gray-300 mb-4 max-w-2xl leading-relaxed">
+          Spec-Driven Development with AI Sub-Agents
+        </p>
+        
+        <p className="text-lg text-gray-400 dark:text-gray-400 mb-8 max-w-2xl leading-relaxed">
+          An orchestrator + 9 specialized sub-agents for structured feature development. Build complex features without context overload, lost details, or hallucinations.
+        </p>
+        
+        <div className="flex flex-wrap gap-4">
+          <a 
+            href="/quickstart" 
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#b38135] hover:bg-[#9a6d2d] text-white font-semibold transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105"
+          >
+            Get Started
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </a>
+          
+          <a 
+            href="/how-it-works" 
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-white/30 dark:border-white/30 bg-white/10 dark:bg-white/10 hover:bg-white/20 dark:hover:bg-white/20 text-white font-semibold transition-all duration-200"
+          >
+            How It Works
+          </a>
+          
+          <a 
+            href="https://github.com/Gentleman-Programming/agent-teams-lite" 
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-white/30 dark:border-white/30 bg-white/10 dark:bg-white/10 hover:bg-white/20 dark:hover:bg-white/20 text-white font-semibold transition-all duration-200"
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
+            </svg>
+            GitHub
+          </a>
+        </div>
+      </div>
+      
+      <div className="hidden lg:block lg:col-span-5">
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-[#b38135] to-[#448ce0] rounded-2xl blur-3xl opacity-20"></div>
+          <div className="relative bg-[#1a1d27]/80 dark:bg-[#1a1d27]/80 backdrop-blur-sm rounded-2xl p-6 border border-white/10 dark:border-white/10 shadow-2xl">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-3 h-3 rounded-full bg-red-500"></div>
+              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+            </div>
+            <pre className="text-sm text-gray-300 dark:text-gray-300 overflow-x-auto">
+              <code>{`YOU: "Add CSV export to the app"
 
-Get your documentation site up and running in minutes.
+ORCHESTRATOR (delegate-only):
+  → Explorer sub-agent
+    ✓ Codebase analyzed
+  
+  → Proposer sub-agent
+    ✓ proposal.md created
+  
+  → Spec Writer sub-agent ∥ Designer
+    ✓ specs written
+    ✓ design.md created
+  
+  → Task Planner sub-agent
+    ✓ tasks.md with checklist
+  
+  → Implementer sub-agent
+    ✓ Code written, tasks ✓
+  
+  → Verifier sub-agent
+    ✓ Tests passed
+  
+  → Archiver sub-agent
+    ✓ Change archived`}</code>
+            </pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="text-center mb-12">
+    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+      The problem with AI coding assistants
+    </h2>
+    <p className="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
+      AI assistants are powerful, but they struggle with complex features
+    </p>
+  </div>
+  
+  <div className="grid md:grid-cols-2 gap-6 mb-16">
+    <div className="p-6 rounded-2xl bg-white dark:bg-[#1a1d27] border border-gray-200 dark:border-[#27272a] transition-colors">
+      <div className="w-12 h-12 rounded-full bg-red-500/10 dark:bg-red-500/10 flex items-center justify-center mb-4">
+        <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      </div>
+      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Context overload</h3>
+      <p className="text-gray-600 dark:text-gray-400">Long conversations lead to compression, lost details, and hallucinations</p>
+    </div>
+    
+    <div className="p-6 rounded-2xl bg-white dark:bg-[#1a1d27] border border-gray-200 dark:border-[#27272a] transition-colors">
+      <div className="w-12 h-12 rounded-full bg-red-500/10 dark:bg-red-500/10 flex items-center justify-center mb-4">
+        <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+        </svg>
+      </div>
+      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No structure</h3>
+      <p className="text-gray-600 dark:text-gray-400">"Build me dark mode" produces unpredictable results without a plan</p>
+    </div>
+    
+    <div className="p-6 rounded-2xl bg-white dark:bg-[#1a1d27] border border-gray-200 dark:border-[#27272a] transition-colors">
+      <div className="w-12 h-12 rounded-full bg-red-500/10 dark:bg-red-500/10 flex items-center justify-center mb-4">
+        <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No review gate</h3>
+      <p className="text-gray-600 dark:text-gray-400">Code gets written before anyone agrees on what to build</p>
+    </div>
+    
+    <div className="p-6 rounded-2xl bg-white dark:bg-[#1a1d27] border border-gray-200 dark:border-[#27272a] transition-colors">
+      <div className="w-12 h-12 rounded-full bg-red-500/10 dark:bg-red-500/10 flex items-center justify-center mb-4">
+        <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+        </svg>
+      </div>
+      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No memory</h3>
+      <p className="text-gray-600 dark:text-gray-400">Specs live in chat history that vanishes when the session ends</p>
+    </div>
+  </div>
+  
+  <div className="text-center">
+    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+      The solution: Agent Teams
+    </h2>
+    <p className="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto mb-8">
+      A lightweight orchestrator delegates all real work to specialized sub-agents. Each sub-agent starts with fresh context, executes one focused task, and returns a structured result.
+    </p>
+  </div>
+</div>
 
-## Make it yours
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="text-center mb-12">
+    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+      Quick start
+    </h2>
+    <p className="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
+      Get up and running in minutes
+    </p>
+  </div>
+  
+  <Steps>
+    <Step title="Install the skills">
+      Run the interactive installer to copy skills to your AI assistant:
+      
+      ```bash
+      git clone https://github.com/gentleman-programming/agent-teams-lite.git
+      cd agent-teams-lite
+      ./scripts/install.sh
+      ```
+      
+      The installer will ask which tool you use and copy skills to the right location.
+    </Step>
+    
+    <Step title="Add the orchestrator">
+      Append the orchestrator instructions to your AI assistant's config file. See the [Installation](/installation/overview) guide for your specific tool.
+    </Step>
+    
+    <Step title="Use it">
+      Open your AI assistant in any project and start building:
+      
+      ```bash
+      /sdd-init
+      /sdd-new add-csv-export
+      ```
+      
+      The orchestrator will delegate to sub-agents, show you summaries, and ask for approval between phases.
+    </Step>
+  </Steps>
+</div>
 
-Design a docs site that looks great and empowers your users.
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="text-center mb-12">
+    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+      Explore by topic
+    </h2>
+    <p className="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
+      Learn about the architecture, installation, and workflows
+    </p>
+  </div>
+  
+  <CardGroup cols={3}>
+    <Card title="How It Works" icon="gears" href="/how-it-works">
+      Understand the orchestrator + sub-agent architecture and dependency graph
+    </Card>
+    
+    <Card title="Installation" icon="download" href="/installation/overview">
+      Install for Claude Code, OpenCode, Cursor, VS Code, and more
+    </Card>
+    
+    <Card title="Commands" icon="terminal" href="/commands/overview">
+      Learn all 8 SDD commands from /sdd-init to /sdd-archive
+    </Card>
+    
+    <Card title="Workflow Guide" icon="diagram-project" href="/guides/workflow">
+      Complete workflow from exploration to implementation
+    </Card>
+    
+    <Card title="Persistence Modes" icon="database" href="/guides/persistence">
+      Choose between engram, openspec, or none storage
+    </Card>
+    
+    <Card title="Sub-Agents" icon="users" href="/sub-agents/architecture">
+      Explore all 9 specialized sub-agents
+    </Card>
+  </CardGroup>
+</div>
 
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
-  </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="text-center mb-12">
+    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+      Key features
+    </h2>
+    <p className="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
+      Everything you need for structured feature development
+    </p>
+  </div>
+  
+  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="p-6 rounded-2xl bg-white dark:bg-[#1a1d27] border border-gray-200 dark:border-[#27272a] hover:border-[#b38135] dark:hover:border-[#b38135] transition-all duration-200">
+      <div className="w-12 h-12 rounded-full bg-[#b38135]/10 dark:bg-[#b38135]/10 flex items-center justify-center mb-4">
+        <svg className="w-6 h-6 text-[#b38135]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      </div>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Delegate-only orchestrator</h3>
+      <p className="text-sm text-gray-600 dark:text-gray-400">Coordinator never does phase work directly, keeping context minimal</p>
+    </div>
+    
+    <div className="p-6 rounded-2xl bg-white dark:bg-[#1a1d27] border border-gray-200 dark:border-[#27272a] hover:border-[#b38135] dark:hover:border-[#b38135] transition-all duration-200">
+      <div className="w-12 h-12 rounded-full bg-[#b38135]/10 dark:bg-[#b38135]/10 flex items-center justify-center mb-4">
+        <svg className="w-6 h-6 text-[#b38135]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      </div>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">9 specialized sub-agents</h3>
+      <p className="text-sm text-gray-600 dark:text-gray-400">Explorer, Proposer, Spec Writer, Designer, Task Planner, Implementer, Verifier, Archiver</p>
+    </div>
+    
+    <div className="p-6 rounded-2xl bg-white dark:bg-[#1a1d27] border border-gray-200 dark:border-[#27272a] hover:border-[#b38135] dark:hover:border-[#b38135] transition-all duration-200">
+      <div className="w-12 h-12 rounded-full bg-[#b38135]/10 dark:bg-[#b38135]/10 flex items-center justify-center mb-4">
+        <svg className="w-6 h-6 text-[#b38135]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+        </svg>
+      </div>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Pluggable artifact storage</h3>
+      <p className="text-sm text-gray-600 dark:text-gray-400">Choose engram, openspec (file-based), or none (ephemeral)</p>
+    </div>
+    
+    <div className="p-6 rounded-2xl bg-white dark:bg-[#1a1d27] border border-gray-200 dark:border-[#27272a] hover:border-[#b38135] dark:hover:border-[#b38135] transition-all duration-200">
+      <div className="w-12 h-12 rounded-full bg-[#b38135]/10 dark:bg-[#b38135]/10 flex items-center justify-center mb-4">
+        <svg className="w-6 h-6 text-[#b38135]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+        </svg>
+      </div>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Zero dependencies</h3>
+      <p className="text-sm text-gray-600 dark:text-gray-400">Pure Markdown skills that work with any AI assistant</p>
+    </div>
+    
+    <div className="p-6 rounded-2xl bg-white dark:bg-[#1a1d27] border border-gray-200 dark:border-[#27272a] hover:border-[#b38135] dark:hover:border-[#b38135] transition-all duration-200">
+      <div className="w-12 h-12 rounded-full bg-[#b38135]/10 dark:bg-[#b38135]/10 flex items-center justify-center mb-4">
+        <svg className="w-6 h-6 text-[#b38135]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+      </div>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Parallel phase execution</h3>
+      <p className="text-sm text-gray-600 dark:text-gray-400">Run specs and design in parallel with DAG-based orchestration</p>
+    </div>
+    
+    <div className="p-6 rounded-2xl bg-white dark:bg-[#1a1d27] border border-gray-200 dark:border-[#27272a] hover:border-[#b38135] dark:hover:border-[#b38135] transition-all duration-200">
+      <div className="w-12 h-12 rounded-full bg-[#b38135]/10 dark:bg-[#b38135]/10 flex items-center justify-center mb-4">
+        <svg className="w-6 h-6 text-[#b38135]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+        </svg>
+      </div>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">TDD workflow (v2.0)</h3>
+      <p className="text-sm text-gray-600 dark:text-gray-400">RED-GREEN-REFACTOR cycle built into the implementer sub-agent</p>
+    </div>
+  </div>
+</div>
 
-## Create beautiful pages
-
-Everything you need to create world-class documentation.
-
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
-
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="rounded-2xl bg-gradient-to-br from-[#b38135] to-[#9a6d2d] dark:from-[#b38135] dark:to-[#9a6d2d] p-8 sm:p-12 text-center shadow-2xl">
+    <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+      Ready to build with structure?
+    </h2>
+    <p className="text-lg sm:text-xl text-white/90 mb-8 max-w-2xl mx-auto">
+      Start using Agent Teams Lite today and build complex features without losing context.
+    </p>
+    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+      <a 
+        href="/quickstart" 
+        className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-white hover:bg-gray-100 text-[#b38135] font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+      >
+        Get Started
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+        </svg>
+      </a>
+      
+      <a 
+        href="/installation/overview" 
+        className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full border-2 border-white/30 hover:border-white/50 bg-white/10 hover:bg-white/20 text-white font-semibold transition-all duration-200"
+      >
+        View Installation Guide
+      </a>
+    </div>
+  </div>
+</div>

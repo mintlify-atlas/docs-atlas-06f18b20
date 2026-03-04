@@ -1,0 +1,271 @@
+---
+title: Complete Workflow Guide
+description: Understanding the full Agent Teams Lite workflow from initialization to archive
+icon: "diagram-project"
+---
+
+## Overview
+
+Agent Teams Lite uses a structured workflow where a lightweight orchestrator delegates all real work to specialized sub-agents. Each sub-agent starts with fresh context, executes one focused task, and returns a structured result.
+
+<Note>
+The orchestrator **NEVER does phase work directly**. It only coordinates sub-agents, tracks state, and synthesizes summaries. This keeps the main thread small and stable.
+</Note>
+
+## The Workflow Pattern
+
+```
+YOU: "I want to add CSV export to the app"
+
+ORCHESTRATOR (delegate-only, minimal context):
+  → launches EXPLORER sub-agent     → returns: codebase analysis
+  → shows you summary, you approve
+  → launches PROPOSER sub-agent     → returns: proposal artifact
+  → launches SPEC WRITER sub-agent  → returns: spec artifact
+  → launches DESIGNER sub-agent     → returns: design artifact
+  → launches TASK PLANNER sub-agent → returns: tasks artifact
+  → shows you everything, you approve
+  → launches IMPLEMENTER sub-agent  → returns: code written, tasks checked off
+  → launches VERIFIER sub-agent     → returns: verification artifact
+  → launches ARCHIVER sub-agent     → returns: change closed
+```
+
+## Architecture
+
+The orchestrator maintains minimal context while sub-agents handle all heavy lifting:
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  ORCHESTRATOR (your main agent — gentleman, default, etc) │
+│                                                           │
+│  Responsibilities:                                        │
+│  • Detect when SDD is needed                              │
+│  • Launch sub-agents via Task tool                        │
+│  • Show summaries to user                                 │
+│  • Ask for approval between phases                        │
+│  • Track state: which artifacts exist, what's next        │
+│                                                           │
+│  Context usage: MINIMAL (only state + summaries)          │
+└──────────────┬───────────────────────────────────────────┘
+               │
+               │ Task(subagent_type: 'general', prompt: 'Read skill...')
+               │
+    ┌──────────┴──────────────────────────────────────────┐
+    │                                                      │
+    ▼          ▼          ▼         ▼         ▼           ▼
+┌────────┐┌────────┐┌────────┐┌────────┐┌────────┐┌────────┐
+│EXPLORE ││PROPOSE ││  SPEC  ││ DESIGN ││ TASKS  ││ APPLY  │ ...
+│        ││        ││        ││        ││        ││        │
+│ Fresh  ││ Fresh  ││ Fresh  ││ Fresh  ││ Fresh  ││ Fresh  │
+│context ││context ││context ││context ││context ││context │
+└────────┘└────────┘└────────┘└────────┘└────────┘└────────┘
+```
+
+## The Dependency Graph
+
+Phases execute in a directed acyclic graph (DAG) based on dependencies:
+
+```
+                    proposal
+                   (root node)
+                       │
+         ┌─────────────┴─────────────┐
+         │                           │
+         ▼                           ▼
+      specs                       design
+   (requirements                (technical
+    + scenarios)                 approach)
+         │                           │
+         └─────────────┬─────────────┘
+                       │
+                       ▼
+                    tasks
+                (implementation
+                  checklist)
+                       │
+                       ▼
+                    apply
+                (write code)
+                       │
+                       ▼
+                    verify
+               (quality gate)
+                       │
+                       ▼
+                   archive
+              (merge specs,
+               close change)
+```
+
+<Accordion title="Parallel Phase Execution">
+Note that **specs** and **design** can run in parallel since they both depend only on the proposal. The orchestrator can launch both sub-agents simultaneously for faster execution.
+</Accordion>
+
+## Commands Reference
+
+| Command | What It Does |
+|---------|-------------|
+| `/sdd-init` | Initialize SDD context. Detects stack and bootstraps the active persistence backend. |
+| `/sdd-explore <topic>` | Investigate an idea. Reads codebase, compares approaches. No files created. |
+| `/sdd-new <name>` | Start a new change by delegating exploration + proposal to sub-agents. |
+| `/sdd-continue` | Run the next dependency-ready phase via sub-agent(s). |
+| `/sdd-ff <name>` | Fast-forward planning with sub-agents (proposal → specs → design → tasks). |
+| `/sdd-apply` | Implement tasks in batches. Checks off items as it goes. |
+| `/sdd-verify` | Validate implementation against specs. Reports CRITICAL / WARNING / SUGGESTION. |
+| `/sdd-archive` | Close a change and persist final state in the active artifact store. |
+
+## Example: Complete Workflow
+
+<Accordion title="Step-by-Step: Adding Dark Mode">
+
+### 1. Start the Change
+
+```
+You: /sdd-new add-dark-mode
+
+AI:  Launching explorer sub-agent...
+     ✓ Codebase analyzed. React + Tailwind detected.
+     ✓ Current theme: hardcoded light mode in globals.css
+     
+     Launching proposal sub-agent...
+     ✓ proposal.md created
+       Intent: Add dark mode toggle with system preference detection
+       Scope: Theme context, toggle component, CSS variables
+     
+     Want me to continue with specs and design? (or review the proposal first)
+```
+
+### 2. Continue to Specs and Design
+
+```
+You: Go ahead
+
+AI:  ✓ specs/ui/spec.md — 3 requirements, 7 scenarios
+     ✓ design.md — CSS variables approach, React Context, localStorage
+     ✓ tasks.md — 3 phases, 8 tasks
+     
+     Ready to implement. Run /sdd-apply to start.
+```
+
+### 3. Implementation
+
+```
+You: /sdd-apply
+
+AI:  Implementing Phase 1 (Foundation)...
+     ✓ 1.1 Created ThemeContext
+     ✓ 1.2 Added CSS custom properties
+     ✓ 1.3 Added localStorage persistence
+     
+     3/8 tasks complete. Continue with Phase 2?
+```
+
+### 4. Verification
+
+```
+You: /sdd-verify
+
+AI:  Running verification...
+     ✓ All specs scenarios pass
+     ✓ Build successful
+     ⚠ Warning: No tests for system preference detection
+     
+     Status: PASS with warnings
+```
+
+### 5. Archive
+
+```
+You: /sdd-archive
+
+AI:  Archiving change...
+     ✓ Delta specs merged into main specs
+     ✓ Change moved to archive/2026-03-04-add-dark-mode/
+     ✓ Audit trail created
+     
+     Change complete!
+```
+
+</Accordion>
+
+## Sub-Agent Result Contract
+
+Each sub-agent returns a structured payload:
+
+```json
+{
+  "status": "ok | warning | blocked | failed",
+  "executive_summary": "short decision-grade summary",
+  "detailed_report": "optional long-form analysis when needed",
+  "artifacts": [
+    {
+      "name": "design",
+      "store": "engram | openspec | none",
+      "ref": "observation-id | file-path | null"
+    }
+  ],
+  "next_recommended": ["tasks"],
+  "risks": ["optional risk list"]
+}
+```
+
+<Note>
+`executive_summary` is intentionally short. `detailed_report` can be as long as needed for complex architecture work.
+</Note>
+
+## The Sub-Agents
+
+Each sub-agent is a SKILL.md file — pure Markdown instructions:
+
+| Sub-Agent | Skill File | What It Does |
+|-----------|-----------|-------------|
+| **Init** | `sdd-init/SKILL.md` | Detects project stack, creates `openspec/` structure |
+| **Explorer** | `sdd-explore/SKILL.md` | Reads codebase, compares approaches, identifies risks |
+| **Proposer** | `sdd-propose/SKILL.md` | Creates `proposal.md` with intent, scope, rollback plan |
+| **Spec Writer** | `sdd-spec/SKILL.md` | Writes delta specs (ADDED/MODIFIED/REMOVED) with Given/When/Then |
+| **Designer** | `sdd-design/SKILL.md` | Creates `design.md` with architecture decisions and rationale |
+| **Task Planner** | `sdd-tasks/SKILL.md` | Breaks down into phased, numbered task checklist |
+| **Implementer** | `sdd-apply/SKILL.md` | Writes code following specs and design, marks tasks complete. v2.0: TDD workflow support |
+| **Verifier** | `sdd-verify/SKILL.md` | Validates implementation against specs with real test execution. v2.0: spec compliance matrix |
+| **Archiver** | `sdd-archive/SKILL.md` | Merges delta specs into main specs, moves to archive |
+
+## Shared Conventions
+
+All 9 skills reference three shared convention files instead of inlining persistence logic:
+
+| File | Purpose |
+|------|------|
+| `persistence-contract.md` | Mode resolution rules — how `engram`, `openspec`, and `none` modes behave |
+| `engram-convention.md` | Deterministic artifact naming, two-step recovery protocol |
+| `openspec-convention.md` | Filesystem paths for each artifact, directory structure |
+
+<Warning>
+**Why they exist:** Previously each skill inlined its own persistence logic (~224 lines of duplication across 9 skills). Now each skill references the shared files for DRY principles and consistent behavior.
+</Warning>
+
+## v2.0 Skill Upgrades
+
+Two skills received major upgrades:
+
+### sdd-apply v2.0
+Added TDD workflow support. When enabled, the implementer follows a RED-GREEN-REFACTOR cycle: write a failing test first, implement until it passes, then refactor. Controlled by `tdd: true` and `test_command` in config.
+
+### sdd-verify v2.0
+Now performs real test execution instead of static analysis only. Runs the project's test suite and build commands, produces a spec compliance matrix mapping each requirement to PASS/FAIL/SKIP, and reports issues at CRITICAL/WARNING/SUGGESTION severity levels.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Persistence Modes" icon="database" href="/guides/persistence">
+    Learn about engram, openspec, and none modes
+  </Card>
+  <Card title="Delta Specs" icon="code-compare" href="/guides/delta-specs">
+    Understand delta specifications
+  </Card>
+  <Card title="TDD Workflow" icon="vial-circle-check" href="/guides/tdd-workflow">
+    Master the RED-GREEN-REFACTOR cycle
+  </Card>
+  <Card title="Commands" icon="terminal" href="/commands/overview">
+    Complete command reference
+  </Card>
+</CardGroup>

@@ -1,0 +1,295 @@
+---
+title: /sdd-explore
+description: Investigate ideas and compare approaches without creating changes
+---
+
+## Overview
+
+The `/sdd-explore` command launches an investigation sub-agent that researches your codebase and compares approaches. It's designed for thinking through problems before committing to a change.
+
+<Info>
+Exploration is read-only by default. No code modifications, no artifacts created unless tied to a named change.
+</Info>
+
+## Usage
+
+```bash
+/sdd-explore <topic>
+```
+
+<ParamField path="topic" type="string" required>
+  What to investigate. Can be a feature name, technical question, or problem statement.
+</ParamField>
+
+## What It Does
+
+### 1. Investigates the Codebase
+
+The explorer sub-agent:
+- Reads entry points and key files
+- Searches for related functionality
+- Checks existing tests (if any)
+- Identifies patterns already in use
+- Maps dependencies and coupling
+
+### 2. Analyzes Options
+
+Compares multiple approaches with:
+- **Pros** - Benefits of each approach
+- **Cons** - Drawbacks and limitations
+- **Complexity** - Low/Medium/High effort estimate
+- **Risks** - Potential issues
+
+### 3. Provides Recommendations
+
+Returns a structured analysis with:
+- Current system state
+- Affected code areas
+- Comparison table of approaches
+- Recommended solution
+- Risk assessment
+
+## Example Usage
+
+### Exploring State Management
+
+```bash
+/sdd-explore "state management for user preferences"
+```
+
+**Output:**
+
+```markdown
+## Exploration: State Management for User Preferences
+
+### Current State
+User preferences currently stored in localStorage directly from components.
+No centralized state management. 5 components read/write preferences independently.
+
+### Affected Areas
+- `src/components/ThemeToggle.tsx` — reads theme preference
+- `src/components/LanguageSelector.tsx` — reads language preference
+- `src/components/NotificationSettings.tsx` — reads notification prefs
+- `src/hooks/useLocalStorage.ts` — shared localStorage hook
+- `src/types/preferences.ts` — type definitions
+
+### Approaches
+
+| Approach | Pros | Cons | Complexity |
+|----------|------|------|------------|
+| Context API | Native React, no deps, familiar | Verbose, potential re-render issues | Low |
+| Zustand | Minimal boilerplate, great DX | New dependency, learning curve | Low |
+| Redux Toolkit | Team knows it, powerful devtools | Heavy for this use case | Medium |
+| Keep current | No refactor needed | Hard to maintain, prop drilling | Low |
+
+### Recommendation
+**Zustand** - Best balance of simplicity and scalability. The bundle size (1.2kb) is negligible, and the API is intuitive. Context API would work but Zustand's selectors prevent unnecessary re-renders.
+
+### Risks
+- Migration requires touching 5 components simultaneously
+- localStorage sync logic needs careful testing
+- Potential race conditions during hydration
+
+### Ready for Proposal
+Yes. Recommend proceeding with Zustand approach.
+```
+
+### Exploring Architecture Patterns
+
+```bash
+/sdd-explore "moving from REST to GraphQL"
+```
+
+**Output:**
+
+```markdown
+## Exploration: Moving from REST to GraphQL
+
+### Current State
+REST API with 23 endpoints. Frontend makes 4-7 requests per page load.
+No caching layer. Some endpoints return over-fetched data.
+
+### Affected Areas
+- `src/api/` — 23 REST endpoint clients
+- `src/hooks/` — 15 data-fetching hooks
+- `src/types/api.ts` — request/response types
+- Backend: `server/routes/` — all route handlers
+- Backend: `server/middleware/` — auth middleware
+
+### Approaches
+
+1. **Full Migration to GraphQL**
+   - Pros: Best long-term solution, solves over-fetching, single endpoint
+   - Cons: Complete rewrite, backend + frontend, 3-4 weeks
+   - Effort: High
+
+2. **Incremental GraphQL Alongside REST**
+   - Pros: Gradual migration, less risk, test in production
+   - Cons: Maintain two systems, complexity increase
+   - Effort: Medium
+
+3. **BFF Pattern with GraphQL**
+   - Pros: Keep REST backend, add GraphQL layer, easier migration
+   - Cons: Extra deployment, potential latency
+   - Effort: Medium
+
+4. **Optimize REST (caching + query params)**
+   - Pros: No new tech, fastest to implement
+   - Cons: Doesn't solve over-fetching, bandaid solution
+   - Effort: Low
+
+### Recommendation
+**BFF Pattern** - Add a GraphQL BFF in front of existing REST API. This allows incremental migration without rewriting the backend immediately. Use Apollo Server to wrap REST endpoints, then migrate frontend queries one feature at a time.
+
+### Risks
+- BFF becomes a bottleneck if not properly scaled
+- Two APIs to maintain during transition period
+- Team needs GraphQL training
+- Potential N+1 query issues if not careful with resolvers
+
+### Ready for Proposal
+No - Need to validate BFF performance with prototype first. Suggest 2-day spike.
+```
+
+## When to Use
+
+<CardGroup cols={2}>
+  <Card title="Before Committing" icon="thinking">
+    Research approaches before starting a change
+  </Card>
+  <Card title="Compare Options" icon="scale-balanced">
+    Evaluate multiple solutions objectively
+  </Card>
+  <Card title="Risk Assessment" icon="triangle-exclamation">
+    Identify potential issues early
+  </Card>
+  <Card title="Knowledge Sharing" icon="book">
+    Document analysis for team review
+  </Card>
+</CardGroup>
+
+## Standalone vs. Change-Linked
+
+### Standalone Exploration
+
+```bash
+/sdd-explore "API versioning strategies"
+```
+
+- Returns analysis only
+- No files created
+- Use for research and decision-making
+
+### Change-Linked Exploration
+
+When exploration is part of `/sdd-new`, it creates `exploration.md`:
+
+```bash
+/sdd-new implement-api-v2
+# Internally runs exploration and saves to:
+# openspec/changes/implement-api-v2/exploration.md
+```
+
+## Output Format
+
+All explorations return a structured envelope:
+
+<ResponseField name="status" type="string">
+  `ok` | `warning` | `blocked` | `failed`
+</ResponseField>
+
+<ResponseField name="executive_summary" type="string">
+  Decision-grade summary (2-3 sentences)
+</ResponseField>
+
+<ResponseField name="detailed_report" type="markdown">
+  Full exploration content with sections:
+  - Current State
+  - Affected Areas
+  - Approaches (comparison table)
+  - Recommendation
+  - Risks
+  - Ready for Proposal
+</ResponseField>
+
+<ResponseField name="artifacts" type="array">
+  List of created artifacts (usually empty for standalone exploration)
+</ResponseField>
+
+<ResponseField name="next_recommended" type="array">
+  Suggested next steps (e.g., `["propose"]` if ready, `["prototype"]` if uncertain)
+</ResponseField>
+
+<ResponseField name="risks" type="array">
+  Identified risks from the analysis
+</ResponseField>
+
+## Rules and Constraints
+
+<Warning>
+The explorer sub-agent operates in read-only mode:
+- ❌ Cannot modify existing code
+- ❌ Cannot create project files (except `exploration.md` when linked to a change)
+- ✅ Can read any file in the codebase
+- ✅ Can search for patterns and functionality
+</Warning>
+
+## Tips for Effective Exploration
+
+<Steps>
+  <Step title="Be specific">
+    Instead of "database", ask "moving PostgreSQL indexes to improve query performance"
+  </Step>
+  <Step title="Frame as a problem">
+    "How to handle concurrent writes" is better than "concurrency"
+  </Step>
+  <Step title="Include context">
+    "Authentication with third-party OAuth providers" gives more direction
+  </Step>
+  <Step title="Review before proceeding">
+    Read the analysis carefully before running `/sdd-new`
+  </Step>
+</Steps>
+
+## Real-World Examples
+
+### Example 1: Performance Investigation
+
+```bash
+/sdd-explore "reduce bundle size for mobile users"
+```
+
+Explorer identifies:
+- Current bundle: 2.3 MB
+- Largest dependencies: chart library (800kb), icon set (400kb)
+- Opportunities: code splitting, tree shaking, lazy loading
+- Recommendation: Route-based code splitting + switch icon library
+
+### Example 2: Architecture Decision
+
+```bash
+/sdd-explore "monorepo vs separate repos for microservices"
+```
+
+Explorer compares:
+- Monorepo (Turborepo): Easier dev, shared tooling, complex CI
+- Separate repos: Independent deploys, harder to sync, simpler CI
+- Recommendation: Monorepo for current team size (4 devs)
+
+### Example 3: Security Analysis
+
+```bash
+/sdd-explore "implementing rate limiting on API"
+```
+
+Explorer investigates:
+- Current state: No rate limiting
+- Options: Redis-based, in-memory, API gateway
+- Affected areas: All API routes, middleware stack
+- Recommendation: Redis with sliding window for accuracy
+
+## Related Commands
+
+- [/sdd-new](/commands/sdd-new) - Start a change after exploration
+- [/sdd-init](/commands/sdd-init) - Initialize SDD before exploring
+- [/sdd-ff](/commands/sdd-ff) - Skip exploration and fast-forward planning

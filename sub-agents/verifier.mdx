@@ -1,0 +1,394 @@
+---
+title: Verifier Sub-Agent (v2.0)
+description: Validate implementation matches specs, design, and tasks with real execution evidence
+---
+
+The **sdd-verify** sub-agent (v2.0) is the quality gate. It validates that the implementation is complete, correct, and behaviorally compliant with the specs by executing tests and builds, not just static analysis.
+
+## Metadata
+
+<ResponseField name="name" type="string">
+`sdd-verify`
+</ResponseField>
+
+<ResponseField name="version" type="string">
+`2.0`
+</ResponseField>
+
+<ResponseField name="author" type="string">
+`gentleman-programming`
+</ResponseField>
+
+<ResponseField name="license" type="string">
+`MIT`
+</ResponseField>
+
+## When It's Triggered
+
+The orchestrator launches `sdd-verify` when:
+- User runs `/sdd-verify`
+- All tasks are marked complete
+- User wants to validate implementation before archiving
+
+## What It Does
+
+### Step 1: Check Completeness
+
+Verifies ALL tasks are done:
+
+```
+Read tasks.md
+├── Count total tasks
+├── Count completed tasks [x]
+├── List incomplete tasks [ ]
+└── Flag: CRITICAL if core tasks incomplete, WARNING if cleanup tasks incomplete
+```
+
+### Step 2: Check Correctness (Static Specs Match)
+
+For EACH spec requirement and scenario, searches the codebase for structural evidence:
+
+```
+FOR EACH REQUIREMENT in specs/:
+├── Search codebase for implementation evidence
+├── For each SCENARIO:
+│   ├── Is the GIVEN precondition handled in code?
+│   ├── Is the WHEN action implemented?
+│   ├── Is the THEN outcome produced?
+│   └── Are edge cases covered?
+└── Flag: CRITICAL if requirement missing, WARNING if scenario partially covered
+```
+
+This is static analysis only. Behavioral validation with real execution happens in Step 5.
+
+### Step 3: Check Coherence (Design Match)
+
+Verifies design decisions were followed:
+
+```
+FOR EACH DECISION in design.md:
+├── Was the chosen approach actually used?
+├── Were rejected alternatives accidentally implemented?
+├── Do file changes match the "File Changes" table?
+└── Flag: WARNING if deviation found (may be valid improvement)
+```
+
+### Step 4: Check Testing (Static)
+
+Verifies test files exist and cover the right scenarios:
+
+```
+Search for test files related to the change
+├── Do tests exist for each spec scenario?
+├── Do tests cover happy paths?
+├── Do tests cover edge cases?
+├── Do tests cover error states?
+└── Flag: WARNING if scenarios lack tests, SUGGESTION if coverage could improve
+```
+
+### Step 4b: Run Tests (Real Execution)
+
+Detects the project's test runner and executes the tests:
+
+```
+Detect test runner from:
+├── openspec/config.yaml → rules.verify.test_command (highest priority)
+├── package.json → scripts.test
+├── pyproject.toml / pytest.ini → pytest
+├── Makefile → make test
+└── Fallback: ask orchestrator
+
+Execute: {test_command}
+Capture:
+├── Total tests run
+├── Passed
+├── Failed (list each with name and error)
+├── Skipped
+└── Exit code
+
+Flag: CRITICAL if exit code != 0 (any test failed)
+Flag: WARNING if skipped tests relate to changed areas
+```
+
+### Step 4c: Build & Type Check (Real Execution)
+
+Detects and runs the build/type-check command:
+
+```
+Detect build command from:
+├── openspec/config.yaml → rules.verify.build_command (highest priority)
+├── package.json → scripts.build → also run tsc --noEmit if tsconfig.json exists
+├── pyproject.toml → python -m build or equivalent
+├── Makefile → make build
+└── Fallback: skip and report as WARNING (not CRITICAL)
+
+Execute: {build_command}
+Capture:
+├── Exit code
+├── Errors (if any)
+└── Warnings (if significant)
+
+Flag: CRITICAL if build fails (exit code != 0)
+Flag: WARNING if there are type errors even with passing build
+```
+
+### Step 4d: Coverage Validation (Real Execution)
+
+Runs with coverage only if `rules.verify.coverage_threshold` is set in `openspec/config.yaml`:
+
+```
+IF coverage_threshold is configured:
+├── Run: {test_command} --coverage (or equivalent for the test runner)
+├── Parse coverage report
+├── Compare total coverage % against threshold
+├── Flag: WARNING if below threshold (not CRITICAL — coverage alone doesn't block)
+└── Report per-file coverage for changed files only
+
+IF coverage_threshold is NOT configured:
+└── Skip this step, report as "Not configured"
+```
+
+### Step 5: Spec Compliance Matrix (Behavioral Validation)
+
+This is the most important step. Cross-references EVERY spec scenario against the actual test run results from Step 4b to build behavioral evidence.
+
+For each scenario from the specs, finds which test(s) cover it and what the result was:
+
+```
+FOR EACH REQUIREMENT in specs/:
+  FOR EACH SCENARIO:
+  ├── Find tests that cover this scenario (by name, description, or file path)
+  ├── Look up that test's result from Step 4b output
+  ├── Assign compliance status:
+  │   ├── ✅ COMPLIANT   → test exists AND passed
+  │   ├── ❌ FAILING     → test exists BUT failed (CRITICAL)
+  │   ├── ❌ UNTESTED    → no test found for this scenario (CRITICAL)
+  │   └── ⚠️ PARTIAL    → test exists, passes, but covers only part of the scenario (WARNING)
+  └── Record: requirement, scenario, test file, test name, result
+```
+
+**A spec scenario is only considered COMPLIANT when there is a test that passed proving the behavior at runtime.** Code existing in the codebase is NOT sufficient evidence.
+
+### Step 6: Persist Verification Report
+
+Saves to:
+- **openspec mode**: `openspec/changes/{change-name}/verify-report.md`
+- **engram mode**: Observation with topic_key `sdd/{change-name}/verify-report`
+- **none mode**: Returns inline only
+
+### Step 7: Return Summary
+
+Returns the full verification report.
+
+## Verification Report Format
+
+```markdown
+## Verification Report
+
+**Change**: {change-name}
+**Version**: {spec version or N/A}
+
+---
+
+### Completeness
+| Metric | Value |
+|--------|-------|
+| Tasks total | {N} |
+| Tasks complete | {N} |
+| Tasks incomplete | {N} |
+
+{List incomplete tasks if any}
+
+---
+
+### Build & Tests Execution
+
+**Build**: ✅ Passed / ❌ Failed
+```
+Build command output or error if failed
+```
+
+**Tests**: ✅ N passed / ❌ N failed / ⚠️ N skipped
+```
+Failed test names and errors if any
+```
+
+**Coverage**: N% / threshold: N% → ✅ Above threshold / ⚠️ Below threshold / ➖ Not configured
+
+---
+
+### Spec Compliance Matrix
+
+| Requirement | Scenario | Test | Result |
+|-------------|----------|------|--------|
+| {REQ-01: name} | {Scenario name} | `{test file} > {test name}` | ✅ COMPLIANT |
+| {REQ-01: name} | {Scenario name} | `{test file} > {test name}` | ❌ FAILING |
+| {REQ-02: name} | {Scenario name} | (none found) | ❌ UNTESTED |
+| {REQ-02: name} | {Scenario name} | `{test file} > {test name}` | ⚠️ PARTIAL |
+
+**Compliance summary**: {N}/{total} scenarios compliant
+
+---
+
+### Correctness (Static — Structural Evidence)
+| Requirement | Status | Notes |
+|------------|--------|-------|
+| {Req name} | ✅ Implemented | {brief note} |
+| {Req name} | ⚠️ Partial | {what's missing} |
+| {Req name} | ❌ Missing | {not implemented} |
+
+---
+
+### Coherence (Design)
+| Decision | Followed? | Notes |
+|----------|-----------|-------|
+| {Decision name} | ✅ Yes | |
+| {Decision name} | ⚠️ Deviated | {how and why} |
+
+---
+
+### Issues Found
+
+**CRITICAL** (must fix before archive):
+{List or "None"}
+
+**WARNING** (should fix):
+{List or "None"}
+
+**SUGGESTION** (nice to have):
+{List or "None"}
+
+---
+
+### Verdict
+{PASS / PASS WITH WARNINGS / FAIL}
+
+{One-line summary of overall status}
+```
+
+## Example Verification Report
+
+```markdown
+## Verification Report
+
+**Change**: add-dark-mode
+**Version**: N/A
+
+---
+
+### Completeness
+| Metric | Value |
+|--------|-------|
+| Tasks total | 19 |
+| Tasks complete | 19 |
+| Tasks incomplete | 0 |
+
+All tasks complete.
+
+---
+
+### Build & Tests Execution
+
+**Build**: ✅ Passed
+```
+✓ Built in 1.2s
+```
+
+**Tests**: ✅ 6 passed / ❌ 0 failed / ⚠️ 0 skipped
+
+**Coverage**: 85% / threshold: 80% → ✅ Above threshold
+
+---
+
+### Spec Compliance Matrix
+
+| Requirement | Scenario | Test | Result |
+|-------------|----------|------|--------|
+| Theme Toggle | User toggles to dark mode | `src/contexts/__tests__/ThemeContext.test.tsx > toggles theme` | ✅ COMPLIANT |
+| Theme Toggle | Theme persists across sessions | `src/contexts/__tests__/ThemeContext.test.tsx > persists to localStorage` | ✅ COMPLIANT |
+| Theme Toggle | Graceful fallback | `src/contexts/__tests__/ThemeContext.test.tsx > fallback without localStorage` | ✅ COMPLIANT |
+| Theme CSS Variables | Dark mode applies correct colors | `src/styles/__tests__/theme.test.ts > dark palette applied` | ✅ COMPLIANT |
+
+**Compliance summary**: 4/4 scenarios compliant
+
+---
+
+### Correctness (Static — Structural Evidence)
+| Requirement | Status | Notes |
+|------------|--------|-------|
+| Theme Toggle | ✅ Implemented | ThemeContext provides toggleTheme function |
+| Theme CSS Variables | ✅ Implemented | CSS variables defined for both light and dark palettes |
+
+---
+
+### Coherence (Design)
+| Decision | Followed? | Notes |
+|----------|-----------|-------|
+| CSS Variables vs CSS-in-JS | ✅ Yes | Used CSS custom properties as designed |
+| Context vs Redux | ✅ Yes | Used React Context |
+| localStorage format | ✅ Yes | Stored as string enum "light" | "dark" |
+
+---
+
+### Issues Found
+
+**CRITICAL** (must fix before archive):
+None
+
+**WARNING** (should fix):
+None
+
+**SUGGESTION** (nice to have):
+None
+
+---
+
+### Verdict
+✅ PASS
+
+All spec scenarios are covered and passing. Implementation matches design. Ready to archive.
+```
+
+## Rules
+
+- **ALWAYS read the actual source code** — don't trust summaries
+- **ALWAYS execute tests** — static analysis alone is not verification
+- A spec scenario is only **COMPLIANT** when a test that covers it has **PASSED**
+- Compare against **SPECS first** (behavioral correctness), **DESIGN second** (structural correctness)
+- Be **objective** — report what IS, not what should be
+- **CRITICAL issues** = must fix before archive
+- **WARNINGS** = should fix but won't block
+- **SUGGESTIONS** = improvements, not blockers
+- **DO NOT fix any issues** — only report them. The orchestrator decides what to do.
+- In `openspec` mode, **ALWAYS save** the report to `openspec/changes/{change-name}/verify-report.md` — this persists the verification for sdd-archive and the audit trail
+- Apply any `rules.verify` from `openspec/config.yaml`
+- Return a structured envelope with: `status`, `executive_summary`, `detailed_report`, `artifacts`, `next_recommended`, and `risks`
+
+## Version 2.0 Features
+
+v2.0 introduced:
+
+### Real Execution
+- Runs tests and captures results
+- Runs build and type-check commands
+- Reports exit codes and errors
+
+### Spec Compliance Matrix
+- Cross-references spec scenarios with test results
+- Assigns compliance status: COMPLIANT / FAILING / UNTESTED / PARTIAL
+- Requires passing tests as proof of behavioral correctness
+
+### Coverage Validation
+- Optional coverage threshold enforcement
+- Per-file coverage for changed files
+- Configurable via `rules.verify.coverage_threshold`
+
+### Behavioral Evidence
+- A spec scenario is only COMPLIANT if a test PASSED
+- Code existence is not sufficient — must have runtime proof
+
+## Related
+
+- [Implementer](/sub-agents/implementer) — Implements the code that this sub-agent validates
+- [Archiver](/sub-agents/archiver) — Archives the change after verification passes
+- [OpenSpec Convention](/sub-agents/openspec-convention)

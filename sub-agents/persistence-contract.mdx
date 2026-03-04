@@ -1,0 +1,179 @@
+---
+title: Persistence Contract
+description: Shared persistence mode resolution and behavior across all sub-agents
+---
+
+The **Persistence Contract** defines how sub-agents determine where to read from and write to. All SDD sub-agents follow this contract to ensure consistent behavior.
+
+## Mode Resolution
+
+The orchestrator passes `artifact_store.mode` with one of: `engram | openspec | none`.
+
+### Default Resolution
+
+When the orchestrator does not explicitly set a mode:
+
+1. If **Engram is available** → use `engram`
+2. Otherwise → use `none`
+
+**`openspec` is NEVER used by default** — only when the orchestrator explicitly passes `openspec`.
+
+When falling back to `none`, sub-agents should recommend the user enable `engram` or `openspec` for better results.
+
+## Behavior Per Mode
+
+| Mode | Read from | Write to | Project files |
+|------|-----------|----------|---------------|
+| `engram` | Engram (see [Engram Convention](/sub-agents/engram-convention)) | Engram | Never |
+| `openspec` | Filesystem (see [OpenSpec Convention](/sub-agents/openspec-convention)) | Filesystem | Yes |
+| `none` | Orchestrator prompt context | Nowhere | Never |
+
+## Common Rules
+
+- If mode is `none`, **DO NOT create or modify any project files**. Return results inline only.
+- If mode is `engram`, **DO NOT write any project files**. Persist to Engram and return observation IDs.
+- If mode is `openspec`, write files **ONLY to the paths defined** in [OpenSpec Convention](/sub-agents/openspec-convention).
+- **NEVER force `openspec/` creation** unless the orchestrator explicitly passed `openspec` mode.
+- If you are unsure which mode to use, **default to `none`**.
+
+## Detail Level
+
+The orchestrator may also pass `detail_level`: `concise | standard | deep`.
+
+This controls output verbosity but **does NOT affect what gets persisted** — always persist the full artifact.
+
+## Examples
+
+### Example 1: Engram Mode
+
+```markdown
+Orchestrator passes:
+- artifact_store.mode: "engram"
+- change_name: "add-dark-mode"
+
+Sub-agent behavior:
+1. Search Engram for existing artifacts: mem_search("sdd/add-dark-mode/proposal")
+2. Read full content: mem_get_observation(id)
+3. Generate new artifact
+4. Save to Engram: mem_save(topic_key: "sdd/add-dark-mode/design", content: "...")
+5. Return observation ID: #obs_xyz789
+6. NEVER create openspec/ directory or any project files
+```
+
+### Example 2: OpenSpec Mode
+
+```markdown
+Orchestrator passes:
+- artifact_store.mode: "openspec"
+- change_name: "add-dark-mode"
+
+Sub-agent behavior:
+1. Read from filesystem: openspec/changes/add-dark-mode/proposal.md
+2. Generate new artifact
+3. Write to filesystem: openspec/changes/add-dark-mode/design.md
+4. Return file path: "openspec/changes/add-dark-mode/design.md"
+```
+
+### Example 3: None Mode
+
+```markdown
+Orchestrator passes:
+- artifact_store.mode: "none"
+- change_name: "add-dark-mode"
+- (All context passed inline in prompt)
+
+Sub-agent behavior:
+1. Read context from orchestrator's prompt
+2. Generate artifact
+3. Return artifact inline in result envelope
+4. DO NOT create any files
+5. Recommend: "Enable `engram` or `openspec` for artifact persistence"
+```
+
+## Why Three Modes?
+
+### Engram Mode (`engram`)
+
+**Use case**: Ephemeral exploration, prototyping, no file pollution
+
+- Stores artifacts in memory (Engram tool)
+- No project files created
+- Fast iteration
+- Disappears when conversation ends (unless Engram persists across sessions)
+
+**Pros**:
+- No filesystem pollution
+- Works in any project without initialization
+- Fast
+
+**Cons**:
+- Not shareable with team
+- No audit trail outside conversation
+- Depends on Engram availability
+
+### OpenSpec Mode (`openspec`)
+
+**Use case**: Long-term projects, team collaboration, audit trail
+
+- Stores artifacts on filesystem in `openspec/` directory
+- Full audit trail
+- Shareable with team (commit to git)
+- Survives conversation end
+
+**Pros**:
+- Persistent across sessions
+- Shareable via git
+- Complete audit trail
+- No tool dependencies
+
+**Cons**:
+- Creates project files
+- Requires initialization (`sdd-init`)
+- More verbose
+
+### None Mode (`none`)
+
+**Use case**: One-off questions, quick prototyping, no persistence needed
+
+- No storage
+- All context inline in conversation
+- No files created
+
+**Pros**:
+- Simplest mode
+- No side effects
+
+**Cons**:
+- Loses everything when conversation ends
+- Can't resume work later
+- Not suitable for real projects
+
+## Migration Between Modes
+
+You can switch modes mid-workflow:
+
+### From `none` to `openspec`
+
+1. Run `/sdd-init` with `openspec` mode
+2. Orchestrator re-runs previous sub-agents with `openspec` mode
+3. Artifacts written to filesystem
+
+### From `engram` to `openspec`
+
+1. Run `/sdd-init` with `openspec` mode
+2. Orchestrator retrieves artifacts from Engram
+3. Orchestrator re-runs sub-agents with `openspec` mode, passing retrieved context
+4. Artifacts written to filesystem
+
+### From `openspec` to `engram`
+
+Not recommended — you'd lose the filesystem audit trail. If needed:
+1. Read artifacts from `openspec/`
+2. Save to Engram with proper topic_keys
+3. Optionally delete `openspec/` (not recommended)
+
+## Related
+
+- [Engram Convention](/sub-agents/engram-convention) — How artifacts are named and stored in Engram
+- [OpenSpec Convention](/sub-agents/openspec-convention) — Directory structure and file paths
+- [Result Contract](/sub-agents/result-contract) — How sub-agents return results

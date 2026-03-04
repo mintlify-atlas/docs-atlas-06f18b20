@@ -1,0 +1,472 @@
+---
+title: OpenCode Installation
+description: Install Agent Teams Lite for OpenCode with full sub-agent support and slash commands
+icon: code
+---
+
+OpenCode provides **full sub-agent support** via its Task tool, plus native slash command support. This is one of the most feature-complete installations.
+
+## Prerequisites
+
+- OpenCode installed and configured
+- Git installed for cloning the repository
+- Access to `~/.config/opencode/` directory
+
+## Installation Steps
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/gentleman-programming/agent-teams-lite.git
+    cd agent-teams-lite
+    ```
+  </Step>
+  
+  <Step title="Run the installer">
+    <CodeGroup>
+    ```bash Interactive
+    ./scripts/install.sh
+    # Choose option 2: OpenCode
+    ```
+    
+    ```bash Non-Interactive
+    ./scripts/install.sh --agent opencode
+    ```
+    </CodeGroup>
+    
+    This installs:
+    - Skills to `~/.config/opencode/skills/sdd-*/`
+    - Commands to `~/.config/opencode/commands/sdd-*.md`
+    
+    You should see output like:
+    ```
+    Installing skills for OpenCode...
+      ✓ _shared (3 convention files)
+      ✓ sdd-init
+      ✓ sdd-explore
+      ✓ sdd-propose
+      ✓ sdd-spec
+      ✓ sdd-design
+      ✓ sdd-tasks
+      ✓ sdd-apply
+      ✓ sdd-verify
+      ✓ sdd-archive
+
+      9 skills installed → ~/.config/opencode/skills
+
+    Installing OpenCode commands...
+      ✓ sdd-init
+      ✓ sdd-explore
+      ✓ sdd-new
+      ✓ sdd-continue
+      ✓ sdd-ff
+      ✓ sdd-apply
+      ✓ sdd-verify
+      ✓ sdd-archive
+
+      8 commands installed → ~/.config/opencode/commands
+    ```
+  </Step>
+  
+  <Step title="Add orchestrator agent config">
+    <Warning>
+      **ACTION REQUIRED:** Without this step, `/sdd-*` commands won't work.
+    </Warning>
+    
+    Open your OpenCode config:
+    ```bash
+    code ~/.config/opencode/opencode.json
+    ```
+    
+    Merge the `agent` block from `examples/opencode/opencode.json` into your existing config.
+    
+    <Accordion title="View agent configuration">
+    ```json
+    {
+      "$schema": "https://opencode.ai/config.json",
+      "agent": {
+        "sdd-orchestrator": {
+          "mode": "all",
+          "description": "SDD Orchestrator - delegates spec-driven development to sub-agents",
+          "prompt": "SPEC-DRIVEN DEVELOPMENT (SDD) ORCHESTRATOR\n...\n",
+          "tools": {
+            "read": true,
+            "write": true,
+            "edit": true,
+            "bash": true
+          }
+        }
+      }
+    }
+    ```
+    </Accordion>
+    
+    You can either:
+    - **Add to existing agent:** Append SDD instructions to your primary agent's prompt
+    - **Create dedicated agent:** Copy `sdd-orchestrator` definition as-is
+    
+    <Info>
+      **Recommended:** Keep your everyday agent (e.g., `gentleman`) as primary, and add `sdd-orchestrator` as a separate agent with `mode: "all"`. Switch between them using the agent picker (Tab).
+    </Info>
+  </Step>
+  
+  <Step title="Verify installation">
+    Start OpenCode in any project:
+    ```bash
+    opencode .
+    ```
+    
+    Use the agent picker (Tab key) and select `sdd-orchestrator`.
+    
+    Type:
+    ```
+    /sdd-init
+    ```
+    
+    Expected response:
+    ```
+    Launching sdd-init sub-agent to bootstrap project context...
+    ✓ Detected stack: [your project's stack]
+    ✓ SDD initialized
+    ```
+  </Step>
+</Steps>
+
+## Configuration Locations
+
+<CardGroup cols={3}>
+  <Card title="Skills" icon="folder">
+    `~/.config/opencode/skills/sdd-*/`
+    
+    9 skill folders + `_shared/` conventions
+  </Card>
+  
+  <Card title="Commands" icon="terminal">
+    `~/.config/opencode/commands/sdd-*.md`
+    
+    8 slash command definitions
+  </Card>
+  
+  <Card title="Agent Config" icon="file">
+    `~/.config/opencode/opencode.json`
+    
+    Orchestrator agent configuration
+  </Card>
+</CardGroup>
+
+## Agent Configuration Options
+
+### Option 1: Dedicated SDD Agent (Recommended)
+
+```json
+{
+  "agent": {
+    "gentleman": {
+      "mode": "primary",
+      "description": "Your everyday coding assistant",
+      "prompt": "..."
+    },
+    "sdd-orchestrator": {
+      "mode": "all",
+      "description": "SDD Orchestrator",
+      "prompt": "[SDD orchestrator instructions]"
+    }
+  }
+}
+```
+
+**Usage:**
+- Use Tab to switch to `sdd-orchestrator` when starting SDD workflows
+- Use Tab to switch back to `gentleman` for day-to-day coding
+
+### Option 2: Combined Agent
+
+```json
+{
+  "agent": {
+    "gentleman": {
+      "mode": "primary",
+      "description": "Coding assistant with SDD support",
+      "prompt": "[Your existing prompt]\n\n[SDD orchestrator instructions]"
+    }
+  }
+}
+```
+
+**Usage:**
+- All capabilities available in one agent
+- No need to switch agents
+
+## Slash Commands
+
+OpenCode's native slash command support makes SDD commands discoverable:
+
+| Command | File | Purpose |
+|---------|------|----------|
+| `/sdd-init` | `~/.config/opencode/commands/sdd-init.md` | Initialize SDD context |
+| `/sdd-explore` | `~/.config/opencode/commands/sdd-explore.md` | Investigate an idea |
+| `/sdd-new` | `~/.config/opencode/commands/sdd-new.md` | Start a new change |
+| `/sdd-continue` | `~/.config/opencode/commands/sdd-continue.md` | Run next phase |
+| `/sdd-ff` | `~/.config/opencode/commands/sdd-ff.md` | Fast-forward planning |
+| `/sdd-apply` | `~/.config/opencode/commands/sdd-apply.md` | Implement tasks |
+| `/sdd-verify` | `~/.config/opencode/commands/sdd-verify.md` | Validate implementation |
+| `/sdd-archive` | `~/.config/opencode/commands/sdd-archive.md` | Archive completed change |
+
+Commands are auto-discovered by OpenCode. Type `/` to see all available commands.
+
+## Example Usage
+
+### Switch to SDD Orchestrator
+
+```
+# Press Tab key in OpenCode
+# Select: sdd-orchestrator
+# Confirm selection
+```
+
+### Initialize SDD
+
+```
+You: /sdd-init
+
+Orchestrator: Launching sdd-init sub-agent...
+              ✓ Detected stack: Next.js + TypeScript + Prisma
+              ✓ Project: my-saas
+              ✓ Artifact store: engram (Engram detected)
+              
+              SDD initialized. Ready to start building.
+```
+
+### Start a New Feature
+
+```
+You: /sdd-new add-user-profiles
+
+Orchestrator: Launching explorer sub-agent...
+              ✓ Current auth: NextAuth.js with JWT
+              ✓ User model: id, email, name (basic fields)
+              ✓ No profile routes detected
+              
+              Launching proposal sub-agent...
+              ✓ Proposal created: sdd/add-user-profiles/proposal
+              
+              Summary:
+              - Add user profile pages with bio, avatar, social links
+              - Scope: Profile model extension, upload handling, UI routes
+              - Rollback: Drop profile fields, remove upload bucket
+              
+              Ready to continue with specs and design?
+```
+
+### Fast-Forward Planning
+
+```
+You: /sdd-ff add-user-profiles
+
+Orchestrator: Running all planning phases...
+              
+              ✓ Specs: 5 requirements, 12 scenarios
+              ✓ Design: Profile schema, S3 uploads, tRPC endpoints
+              ✓ Tasks: 4 phases, 11 tasks
+              
+              All planning complete. Run /sdd-apply to implement.
+```
+
+## How Sub-Agent Delegation Works
+
+OpenCode's Task tool enables fresh-context sub-agents:
+
+```typescript
+// Orchestrator launches sub-agent
+Task(
+  subagent_type: 'general',
+  prompt: `
+    Read the skill at ~/.config/opencode/skills/sdd-propose/SKILL.md
+    and follow its instructions to create a proposal for: add-user-profiles
+    
+    Context:
+    - Project: my-saas
+    - Stack: Next.js + TypeScript + Prisma
+    - Artifact store: engram
+  `
+)
+```
+
+Each sub-agent:
+1. Starts with fresh context (no orchestrator history)
+2. Reads skill instructions from file
+3. Executes phase work (analyze code, write specs, implement, etc.)
+4. Returns structured result to orchestrator
+5. Orchestrator shows summary and asks user to proceed
+
+## Artifact Storage
+
+<Tabs>
+  <Tab title="engram (Recommended)">
+    ```yaml
+    # Auto-detected if Engram MCP server is available
+    artifact_store:
+      mode: engram
+    ```
+    
+    **Benefits:**
+    - Repository stays clean (no openspec/ directory)
+    - Persistent across projects
+    - Fast search and recovery
+    - Automatic deduplication
+    
+    **Naming convention:**
+    ```
+    title:     sdd/add-user-profiles/proposal
+    topic_key: sdd/add-user-profiles/proposal
+    type:      architecture
+    project:   my-saas
+    ```
+  </Tab>
+  
+  <Tab title="openspec">
+    ```yaml
+    # Only when you explicitly request file artifacts
+    artifact_store:
+      mode: openspec
+    ```
+    
+    **Structure:**
+    ```
+    openspec/
+    ├── config.yaml              # Project context
+    ├── specs/                   # Current system specs
+    └── changes/
+        ├── add-user-profiles/   # Active change
+        │   ├── proposal.md
+        │   ├── specs/          # Delta specs
+        │   ├── design.md
+        │   └── tasks.md
+        └── archive/            # Completed changes
+    ```
+  </Tab>
+  
+  <Tab title="none">
+    ```yaml
+    # Ephemeral mode - no persistence
+    artifact_store:
+      mode: none
+    ```
+    
+    Results returned inline. No files written. Good for:
+    - Quick exploration
+    - Privacy-sensitive projects
+    - CI/CD environments
+  </Tab>
+</Tabs>
+
+## Verification Checklist
+
+<Steps>
+  <Step title="Check skills directory">
+    ```bash
+    ls ~/.config/opencode/skills/sdd-*/
+    ```
+    
+    Should show 9 directories + `_shared/`:
+    ```
+    _shared/
+    sdd-apply/  sdd-design/  sdd-init/  sdd-spec/
+    sdd-archive/  sdd-explore/  sdd-propose/  sdd-tasks/  sdd-verify/
+    ```
+  </Step>
+  
+  <Step title="Check commands directory">
+    ```bash
+    ls ~/.config/opencode/commands/sdd-*.md
+    ```
+    
+    Should show 8 command files:
+    ```
+    sdd-apply.md  sdd-continue.md  sdd-ff.md  sdd-new.md
+    sdd-archive.md  sdd-explore.md  sdd-init.md  sdd-verify.md
+    ```
+  </Step>
+  
+  <Step title="Verify agent config">
+    ```bash
+    cat ~/.config/opencode/opencode.json | grep sdd-orchestrator
+    ```
+    
+    Should return match if agent is configured.
+  </Step>
+  
+  <Step title="Test in OpenCode">
+    ```bash
+    opencode .
+    # Press Tab → select sdd-orchestrator
+    # Type: /sdd-init
+    ```
+    
+    Should recognize command and launch sub-agent.
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Command not found">
+    **Problem:** `/sdd-init` shows "command not found"
+    
+    **Solutions:**
+    1. Check commands are in `~/.config/opencode/commands/sdd-*.md`
+    2. Restart OpenCode to reload command index
+    3. Verify file permissions allow reading
+    4. Try typing `/` to see if other commands appear
+  </Accordion>
+  
+  <Accordion title="Agent not available">
+    **Problem:** `sdd-orchestrator` doesn't appear in agent picker
+    
+    **Solutions:**
+    1. Verify agent definition in `~/.config/opencode/opencode.json`
+    2. Check JSON syntax is valid (no trailing commas)
+    3. Ensure `mode: "all"` or `mode: "primary"` is set
+    4. Restart OpenCode
+  </Accordion>
+  
+  <Accordion title="Sub-agent doesn't launch">
+    **Problem:** Commands run inline instead of launching sub-agents
+    
+    **Solutions:**
+    1. Verify orchestrator prompt mentions Task tool
+    2. Check skill paths in agent config: `~/.config/opencode/skills/sdd-*/SKILL.md`
+    3. Ensure OpenCode version supports Task tool
+    4. Review orchestrator instructions: should explicitly use Task tool
+  </Accordion>
+  
+  <Accordion title="Artifacts not saving">
+    **Problem:** Results shown but not persisted
+    
+    **Solutions:**
+    1. Check artifact_store mode in orchestrator output
+    2. If engram mode: verify Engram MCP server is running
+    3. If openspec mode: check write permissions in project directory
+    4. If none mode: persistence is intentionally disabled
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Learn the SDD workflow
+  </Card>
+  
+  <Card title="Commands Reference" icon="book" href="/commands/overview">
+    Complete command documentation
+  </Card>
+  
+  <Card title="Agent Configuration" icon="gear" href="/installation/opencode">
+    Advanced agent setup options
+  </Card>
+  
+  <Card title="Engram Integration" icon="database" href="/guides/persistence">
+    Set up recommended persistence
+  </Card>
+</CardGroup>

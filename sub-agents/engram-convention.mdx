@@ -1,0 +1,260 @@
+---
+title: Engram Convention
+description: Naming rules and recovery protocol for SDD artifacts in Engram
+---
+
+The **Engram Convention** defines how SDD artifacts are named, stored, and retrieved from the Engram memory tool.
+
+## Naming Rules
+
+ALL SDD artifacts persisted to Engram MUST follow this deterministic naming:
+
+```
+title:     sdd/{change-name}/{artifact-type}
+topic_key: sdd/{change-name}/{artifact-type}
+type:      architecture
+project:   {detected or current project name}
+scope:     project
+```
+
+## Artifact Types
+
+These are the exact strings used for `{artifact-type}`:
+
+| Artifact Type | Produced By | Description |
+|---------------|-------------|-------------|
+| `explore` | sdd-explore | Exploration analysis |
+| `proposal` | sdd-propose | Change proposal |
+| `spec` | sdd-spec | Delta specifications (all domains concatenated) |
+| `design` | sdd-design | Technical design |
+| `tasks` | sdd-tasks | Task breakdown |
+| `apply-progress` | sdd-apply | Implementation progress (one per batch) |
+| `verify-report` | sdd-verify | Verification report |
+| `archive-report` | sdd-archive | Archive closure with lineage |
+
+**Exception**: `sdd-init` uses `sdd-init/{project-name}` as both title and topic_key (it's project-scoped, not change-scoped).
+
+## Example
+
+```javascript
+mem_save({
+  title: "sdd/add-dark-mode/proposal",
+  topic_key: "sdd/add-dark-mode/proposal",
+  type: "architecture",
+  project: "my-app",
+  content: "# Proposal: Add Dark Mode\n\n..."
+})
+```
+
+## Recovery Protocol (2 Steps — MANDATORY)
+
+To retrieve an artifact, **ALWAYS** use this two-step process:
+
+### Step 1: Search by Topic Key Pattern
+
+```javascript
+mem_search({
+  query: "sdd/{change-name}/{artifact-type}",
+  project: "{project}"
+})
+// → Returns a truncated preview with an observation ID
+```
+
+### Step 2: Get Full Content (REQUIRED)
+
+```javascript
+mem_get_observation({
+  id: "{observation-id from step 1}"
+})
+// → Returns complete, untruncated content
+```
+
+**NEVER use `mem_search` results directly as the full artifact** — they are truncated previews.
+
+**ALWAYS call `mem_get_observation`** to get the complete content.
+
+## Retrieving Multiple Artifacts
+
+When a skill needs multiple artifacts (e.g., sdd-tasks needs proposal + spec + design):
+
+```javascript
+// Step 1: Search for each artifact
+const proposal = mem_search({
+  query: "sdd/{change-name}/proposal",
+  project: "{project}"
+}); // → get ID
+
+const spec = mem_search({
+  query: "sdd/{change-name}/spec",
+  project: "{project}"
+}); // → get ID
+
+const design = mem_search({
+  query: "sdd/{change-name}/design",
+  project: "{project}"
+}); // → get ID
+
+// Step 2: Get full content for EACH
+const proposalContent = mem_get_observation({ id: proposal.id });
+const specContent = mem_get_observation({ id: spec.id });
+const designContent = mem_get_observation({ id: design.id });
+```
+
+## Loading Project Context
+
+```javascript
+// Step 1: Search
+const init = mem_search({
+  query: "sdd-init/{project}",
+  project: "{project}"
+});
+
+// Step 2: Get full content
+const context = mem_get_observation({ id: init.id });
+```
+
+## Browsing All Artifacts for a Change
+
+```javascript
+mem_search({
+  query: "sdd/{change-name}/",
+  project: "{project}"
+})
+// → Returns all artifacts for that change
+```
+
+## Writing Artifacts
+
+### Standard Write (New Artifact)
+
+```javascript
+mem_save({
+  title: "sdd/{change-name}/{artifact-type}",
+  topic_key: "sdd/{change-name}/{artifact-type}",
+  type: "architecture",
+  project: "{project}",
+  content: "{full markdown content}"
+})
+```
+
+### Update Existing Artifact
+
+When updating an artifact you already retrieved (e.g., marking tasks complete):
+
+```javascript
+mem_update({
+  id: "{observation-id}",
+  content: "{updated full content}"
+})
+```
+
+Use `mem_update` when you have the exact observation ID. Use `mem_save` with the same `topic_key` for upserts (Engram deduplicates by topic_key).
+
+## Why This Convention Exists
+
+### Deterministic Titles
+Recovery works by exact match, not fuzzy search. Every sub-agent knows exactly how to find artifacts.
+
+### `topic_key`
+Enables upserts (updating same artifact without creating duplicates). If you save with the same topic_key twice, Engram replaces the old one.
+
+### `sdd/` Prefix
+Namespaces all SDD artifacts away from other Engram observations. Prevents collision with user's personal notes or other tools.
+
+### Two-Step Recovery
+`mem_search` previews are **always truncated**. `mem_get_observation` is the **only way** to get full content. This is a limitation of the Engram tool.
+
+### Lineage
+`archive-report` includes all observation IDs for complete traceability. You can trace the full history of a change from exploration to archive.
+
+## Example: Full Change Lifecycle
+
+```javascript
+// 1. Init project
+mem_save({
+  topic_key: "sdd-init/my-app",
+  content: "Tech stack: React 19..."
+});
+// → #obs_init123
+
+// 2. Explore
+mem_save({
+  topic_key: "sdd/add-dark-mode/explore",
+  content: "## Exploration: Add Dark Mode..."
+});
+// → #obs_explore456
+
+// 3. Propose
+mem_save({
+  topic_key: "sdd/add-dark-mode/proposal",
+  content: "# Proposal: Add Dark Mode..."
+});
+// → #obs_proposal789
+
+// 4. Spec
+mem_save({
+  topic_key: "sdd/add-dark-mode/spec",
+  content: "# Delta for UI/Theme..."
+});
+// → #obs_spec012
+
+// 5. Design
+mem_save({
+  topic_key: "sdd/add-dark-mode/design",
+  content: "# Design: Add Dark Mode..."
+});
+// → #obs_design345
+
+// 6. Tasks
+mem_save({
+  topic_key: "sdd/add-dark-mode/tasks",
+  content: "# Tasks: Add Dark Mode..."
+});
+// → #obs_tasks678
+
+// 7. Apply (progress updates)
+mem_update({
+  id: "obs_tasks678",
+  content: "# Tasks: Add Dark Mode...\n- [x] 1.1 ..."
+});
+
+// 8. Verify
+mem_save({
+  topic_key: "sdd/add-dark-mode/verify-report",
+  content: "## Verification Report..."
+});
+// → #obs_verify901
+
+// 9. Archive
+mem_save({
+  topic_key: "sdd/add-dark-mode/archive-report",
+  content: "## Archive Report\n\nArtifact lineage:\n- #obs_explore456\n- #obs_proposal789\n- #obs_spec012\n- #obs_design345\n- #obs_tasks678\n- #obs_verify901"
+});
+// → #obs_archive234
+```
+
+## Concatenating Multi-Domain Specs
+
+If a change touches multiple domains (e.g., `auth/` and `payments/`), the `sdd-spec` sub-agent concatenates all delta specs into a single artifact:
+
+```markdown
+# Delta Specifications for: add-oauth
+
+## Domain: auth
+
+### ADDED Requirements
+...
+
+## Domain: payments
+
+### MODIFIED Requirements
+...
+```
+
+This is stored as a single artifact with topic_key `sdd/add-oauth/spec`.
+
+## Related
+
+- [Persistence Contract](/sub-agents/persistence-contract) — Mode resolution rules
+- [OpenSpec Convention](/sub-agents/openspec-convention) — Filesystem alternative
+- [Result Contract](/sub-agents/result-contract) — How sub-agents return observation IDs

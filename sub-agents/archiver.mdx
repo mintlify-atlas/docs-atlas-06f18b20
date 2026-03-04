@@ -1,0 +1,248 @@
+---
+title: Archiver Sub-Agent
+description: Sync delta specs to main specs and archive completed changes
+---
+
+The **sdd-archive** sub-agent completes the SDD cycle by merging delta specs into the main specs (source of truth), then moving the change folder to the archive.
+
+## Metadata
+
+<ResponseField name="name" type="string">
+`sdd-archive`
+</ResponseField>
+
+<ResponseField name="version" type="string">
+`2.0`
+</ResponseField>
+
+<ResponseField name="author" type="string">
+`gentleman-programming`
+</ResponseField>
+
+<ResponseField name="license" type="string">
+`MIT`
+</ResponseField>
+
+## When It's Triggered
+
+The orchestrator launches `sdd-archive` when:
+- User runs `/sdd-archive <change-name>`
+- Verification passed (no CRITICAL issues)
+- Change is ready to be closed
+
+## What It Does
+
+### Step 1: Sync Delta Specs to Main Specs
+
+For each delta spec in `openspec/changes/{change-name}/specs/`:
+
+#### If Main Spec Exists
+
+Reads the existing main spec and applies the delta:
+
+```
+FOR EACH SECTION in delta spec:
+├── ADDED Requirements → Append to main spec's Requirements section
+├── MODIFIED Requirements → Replace the matching requirement in main spec
+└── REMOVED Requirements → Delete the matching requirement from main spec
+```
+
+**Merge carefully:**
+- Match requirements by name (e.g., "### Requirement: Session Expiration")
+- Preserve all OTHER requirements that aren't in the delta
+- Maintain proper Markdown formatting and heading hierarchy
+
+#### If Main Spec Does NOT Exist
+
+The delta spec IS a full spec (not a delta). Copy it directly:
+
+```bash
+# Copy new spec to main specs
+openspec/changes/{change-name}/specs/{domain}/spec.md
+  → openspec/specs/{domain}/spec.md
+```
+
+### Step 2: Move to Archive
+
+Moves the entire change folder to archive with date prefix:
+
+```
+openspec/changes/{change-name}/
+  → openspec/changes/archive/YYYY-MM-DD-{change-name}/
+```
+
+Uses today's date in ISO format (e.g., `2026-03-04`).
+
+### Step 3: Verify Archive
+
+Confirms:
+- [ ] Main specs updated correctly
+- [ ] Change folder moved to archive
+- [ ] Archive contains all artifacts (proposal, specs, design, tasks, verify-report)
+- [ ] Active changes directory no longer has this change
+
+### Step 4: Return Summary
+
+Returns a [result envelope](/sub-agents/result-contract) with archive summary.
+
+## Result Envelope Example
+
+```markdown
+## Change Archived
+
+**Change**: add-dark-mode
+**Archived to**: openspec/changes/archive/2026-03-04-add-dark-mode/
+
+### Specs Synced
+| Domain | Action | Details |
+|--------|--------|---------|
+| ui/theme | Created | 2 added requirements, 0 modified, 0 removed |
+
+### Archive Contents
+- proposal.md ✅
+- specs/ ✅
+- design.md ✅
+- tasks.md ✅ (19/19 tasks complete)
+- verify-report.md ✅
+
+### Source of Truth Updated
+The following specs now reflect the new behavior:
+- `openspec/specs/ui/theme/spec.md`
+
+### SDD Cycle Complete
+The change has been fully planned, implemented, verified, and archived.
+Ready for the next change.
+```
+
+## Delta Merge Example
+
+**Before** (`openspec/specs/auth/spec.md`):
+
+```markdown
+# Authentication Specification
+
+## Requirements
+
+### Requirement: User Login
+
+The system MUST allow users to log in with email and password.
+
+#### Scenario: Successful login
+- GIVEN valid credentials
+- WHEN user submits login form
+- THEN user is authenticated
+```
+
+**Delta** (`openspec/changes/add-2fa/specs/auth/spec.md`):
+
+```markdown
+# Delta for Authentication
+
+## ADDED Requirements
+
+### Requirement: Two-Factor Authentication
+
+The system SHOULD support optional two-factor authentication via TOTP.
+
+#### Scenario: 2FA enabled login
+- GIVEN user has 2FA enabled
+- WHEN user submits login form with valid credentials
+- THEN system prompts for TOTP code
+
+## MODIFIED Requirements
+
+### Requirement: User Login
+
+The system MUST allow users to log in with email and password. If 2FA is enabled, a second authentication step is required.
+
+(Previously: The system MUST allow users to log in with email and password.)
+```
+
+**After Merge** (`openspec/specs/auth/spec.md`):
+
+```markdown
+# Authentication Specification
+
+## Requirements
+
+### Requirement: User Login
+
+The system MUST allow users to log in with email and password. If 2FA is enabled, a second authentication step is required.
+
+#### Scenario: Successful login
+- GIVEN valid credentials
+- WHEN user submits login form
+- THEN user is authenticated
+
+### Requirement: Two-Factor Authentication
+
+The system SHOULD support optional two-factor authentication via TOTP.
+
+#### Scenario: 2FA enabled login
+- GIVEN user has 2FA enabled
+- WHEN user submits login form with valid credentials
+- THEN system prompts for TOTP code
+```
+
+## Archive Structure
+
+After archiving, the structure looks like:
+
+```
+openspec/
+├── config.yaml
+├── specs/
+│   └── ui/
+│       └── theme/
+│           └── spec.md          ← Updated with delta
+└── changes/
+    ├── archive/
+    │   └── 2026-03-04-add-dark-mode/    ← Archived change
+    │       ├── proposal.md
+    │       ├── specs/
+    │       │   └── ui/
+    │       │       └── theme/
+    │       │           └── spec.md       ← Delta (kept for audit trail)
+    │       ├── design.md
+    │       ├── tasks.md
+    │       └── verify-report.md
+    └── (other active changes)
+```
+
+## Rules
+
+- **NEVER archive** a change that has CRITICAL issues in its verification report
+- **ALWAYS sync delta specs BEFORE** moving to archive
+- When merging into existing specs, **PRESERVE requirements not mentioned in the delta**
+- Use **ISO date format (YYYY-MM-DD)** for archive folder prefix
+- If the merge would be **destructive** (removing large sections), **WARN the orchestrator** and ask for confirmation
+- The archive is an **AUDIT TRAIL** — never delete or modify archived changes
+- If `openspec/changes/archive/` doesn't exist, **create it**
+- Apply any `rules.archive` from `openspec/config.yaml`
+- Return a structured envelope with: `status`, `executive_summary`, `detailed_report`, `artifacts`, `next_recommended`, and `risks`
+
+## Persistence Behavior
+
+### OpenSpec Mode
+
+- Performs full merge and archive operations
+- Writes to `openspec/specs/{domain}/spec.md`
+- Moves folder to `openspec/changes/archive/`
+
+### Engram Mode
+
+- Saves archive report with all artifact observation IDs for traceability
+- Topic key: `sdd/{change-name}/archive-report`
+- Includes links to all previous artifacts (explore, proposal, spec, design, tasks, verify-report)
+- Does NOT modify filesystem
+
+### None Mode
+
+- Returns closure summary inline
+- Does NOT perform file operations
+
+## Related
+
+- [Verifier](/sub-agents/verifier) — Must pass before archiving
+- [OpenSpec Convention](/sub-agents/openspec-convention) — Defines archive structure
+- [Engram Convention](/sub-agents/engram-convention) — Defines artifact lineage

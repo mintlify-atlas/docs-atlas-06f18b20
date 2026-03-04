@@ -1,0 +1,533 @@
+---
+title: /sdd-verify
+description: Validate implementation against specs with real test execution (v2.0)
+---
+
+## Overview
+
+The `/sdd-verify` command launches the verifier sub-agent to validate that the implementation matches the specs, design, and tasks. It performs comprehensive quality checks and produces a compliance report.
+
+<Info>
+**v2.0 Enhancement**: Now runs real tests and builds, produces spec compliance matrix, and reports issues at severity levels.
+</Info>
+
+## Usage
+
+```bash
+/sdd-verify [change-name]
+```
+
+<ParamField path="change-name" type="string">
+  Optional. The change to verify. If omitted, verifies the most recent change.
+</ParamField>
+
+## What It Does
+
+### 1. Loads Artifacts
+
+Reads all planning and implementation artifacts:
+- `proposal.md` - Original intent and scope
+- `specs/*.md` - Requirements and acceptance criteria
+- `design.md` - Technical approach and decisions
+- `tasks.md` - Implementation checklist
+
+### 2. Performs Validation Checks
+
+<Tabs>
+  <Tab title="Completeness">
+    - ✓ All tasks marked complete?
+    - ✓ All files mentioned in tasks exist?
+    - ✓ Any TODO comments left in code?
+  </Tab>
+  <Tab title="Correctness">
+    - ✓ Code matches spec scenarios?
+    - ✓ Each requirement addressed?
+    - ✓ Edge cases handled?
+  </Tab>
+  <Tab title="Coherence">
+    - ✓ Design decisions followed?
+    - ✓ Architecture patterns respected?
+    - ✓ Existing conventions maintained?
+  </Tab>
+  <Tab title="Quality">
+    - ✓ Tests pass?
+    - ✓ Build succeeds?
+    - ✓ Coverage thresholds met?
+    - ✓ No type errors?
+  </Tab>
+</Tabs>
+
+### 3. Runs Tests and Build (v2.0)
+
+Executes real commands:
+
+```bash
+# Run test suite
+$ npm test
+✓ 47 tests passed
+✗ 2 tests failed
+
+# Run build
+$ npm run build
+✓ Build succeeded (2.3s)
+
+# Check coverage
+$ npm test -- --coverage
+✓ Coverage: 87% (threshold: 80%)
+```
+
+### 4. Builds Spec Compliance Matrix (v2.0)
+
+Maps each requirement to implementation status:
+
+| Requirement | Status | Evidence |
+|-------------|--------|----------|
+| SHALL support theme toggle | ✓ PASS | ThemeToggle component, test passing |
+| SHALL persist user preference | ✓ PASS | localStorage integration, test passing |
+| SHOULD detect system preference | ✓ PASS | matchMedia integration, test passing |
+| MAY support custom themes | ⊘ SKIP | Deferred to future (per proposal) |
+
+### 5. Reports Issues by Severity
+
+<ResponseField name="CRITICAL" type="array">
+  Blocking issues that prevent the change from being archived:
+  - Test failures
+  - Build failures
+  - Unimplemented MUST/SHALL requirements
+  - Missing rollback plan steps
+</ResponseField>
+
+<ResponseField name="WARNING" type="array">
+  Issues that should be addressed but don't block:
+  - SHOULD requirements not implemented
+  - Coverage below threshold
+  - TODOs in code
+  - Design deviations
+</ResponseField>
+
+<ResponseField name="SUGGESTION" type="array">
+  Nice-to-have improvements:
+  - Code style inconsistencies
+  - Optimization opportunities
+  - Documentation gaps
+</ResponseField>
+
+### 6. Generates Verification Report
+
+Creates `verification-report.md` or `verify-report` artifact with:
+- Executive summary (PASS / FAIL / WARNINGS)
+- Spec compliance matrix
+- Test results
+- Issues by severity
+- Recommendation (ready to archive or needs work)
+
+## Example Output
+
+### Successful Verification
+
+```bash
+/sdd-verify
+```
+
+**Output:**
+
+```markdown
+## Verifying change: add-dark-mode
+
+### Loading Artifacts
+✓ Proposal loaded
+✓ Specs loaded (2 files, 11 scenarios)
+✓ Design loaded
+✓ Tasks loaded (9 tasks)
+
+---
+
+## Validation Checks
+
+### Completeness Check ✓
+- ✓ All 9 tasks marked complete
+- ✓ All files mentioned in tasks exist
+- ⚠️  1 TODO comment found in ThemeToggle.tsx:45
+
+### Correctness Check ✓
+- ✓ 11/11 spec scenarios addressed in implementation
+- ✓ All MUST requirements implemented
+- ✓ All SHOULD requirements implemented
+- ⊘ MAY requirement (custom themes) skipped per proposal
+
+### Coherence Check ✓
+- ✓ CSS custom properties approach followed
+- ✓ React Context pattern implemented as designed
+- ✓ localStorage schema matches design
+- ✓ Existing component conventions maintained
+
+### Quality Check ✓
+Running tests...
+```
+$ npm test
+```
+✓ 52 tests passed (all previous + 5 new theme tests)
+✗ 0 tests failed
+
+Running build...
+```
+$ npm run build
+```
+✓ Build succeeded (2.4s)
+✓ No TypeScript errors
+✓ Bundle size: +3.2kb (acceptable)
+
+Checking coverage...
+```
+$ npm test -- --coverage
+```
+✓ Coverage: 89% (threshold: 80%)
+✓ New files covered: ThemeContext 100%, ThemeToggle 95%
+
+---
+
+## Spec Compliance Matrix
+
+| ID | Requirement | Status | Evidence |
+|----|-------------|--------|----------|
+| UI-1 | System SHALL support light and dark themes | ✓ PASS | CSS variables in globals.css:15-42 |
+| UI-2 | User SHALL be able to toggle between themes | ✓ PASS | ThemeToggle component + test passing |
+| UI-3 | User preference SHALL persist across sessions | ✓ PASS | localStorage integration:28-30, test passing |
+| UI-4 | System SHOULD detect initial preference | ✓ PASS | matchMedia in ThemeContext:18-22 |
+| UI-5 | Theme SHOULD apply without page reload | ✓ PASS | React Context + CSS classes, test passing |
+| UI-6 | System SHOULD prevent theme flash on load | ✓ PASS | Inline script in Layout |
+| UI-7 | Toggle MAY show current theme state | ✓ PASS | Icon changes in ThemeToggle:15-20 |
+
+**Summary**: 7/7 scenarios PASS, 0 FAIL, 0 SKIP
+
+---
+
+## Issues Found
+
+### CRITICAL
+None ✓
+
+### WARNING
+1. TODO comment in src/components/ThemeToggle.tsx:45
+   ```typescript
+   // TODO: Add keyboard shortcut for theme toggle
+   ```
+   **Impact**: Minor - doesn't block functionality
+   **Recommendation**: Create follow-up issue or remove if not planned
+
+### SUGGESTION
+1. Consider extracting theme colors to separate file
+   - Current: All in globals.css
+   - Suggestion: theme-colors.css for easier maintenance
+
+2. Add visual regression tests for theme switching
+   - Current: Only unit tests
+   - Suggestion: Playwright/Cypress tests for UI
+
+---
+
+## Verification Report
+
+**Status**: ✅ PASS WITH WARNINGS
+
+### Summary
+- All requirements implemented
+- All tests passing
+- Build successful
+- 1 warning (TODO comment)
+- 2 suggestions for improvement
+
+### Recommendation
+**Ready to archive** - Change is complete and meets all acceptance criteria.
+Warnings are minor and don't block release.
+
+### Artifacts
+- openspec/changes/add-dark-mode/verification-report.md
+
+---
+
+✅ Verification complete. Run `/sdd-archive` to close this change.
+```
+
+### Verification with Failures
+
+```markdown
+## Verifying change: add-csv-export
+
+### Quality Check ❌
+
+Running tests...
+```
+$ npm test
+```
+✓ 50 tests passed
+✗ 2 tests failed
+
+**Failed Tests**:
+
+1. `CSV Export › should handle special characters`
+   ```
+   Expected: id,title,content
+   1,"Test, with comma","Data"
+   
+   Received: id,title,content
+   1,Test, with comma,Data
+   
+   Error: Quotes missing around fields with commas
+   ```
+
+2. `CSV Export › should include UTF-8 BOM for Excel`
+   ```
+   Expected file to start with UTF-8 BOM (\uFEFF)
+   Received: No BOM present
+   ```
+
+Running build...
+```
+$ npm run build
+```
+✓ Build succeeded
+
+---
+
+## Spec Compliance Matrix
+
+| ID | Requirement | Status | Evidence |
+|----|-------------|--------|----------|
+| API-1 | SHALL export data in CSV format | ✓ PASS | Endpoint implemented, basic test passing |
+| API-2 | SHALL support UTF-8 encoding with BOM | ✗ FAIL | Test failing: no BOM added |
+| API-3 | SHALL include column headers | ✓ PASS | Headers present in output |
+| API-4 | SHOULD handle special characters | ✗ FAIL | Test failing: quotes not applied |
+| API-5 | MAY support custom date formats | ⊘ SKIP | Not implemented (optional) |
+
+**Summary**: 2/5 scenarios PASS, 2 FAIL, 1 SKIP
+
+---
+
+## Issues Found
+
+### CRITICAL
+
+1. SHOULD requirement not met: Special character handling
+   - **Spec**: API-4 "SHOULD handle special characters (quotes, commas, newlines)"
+   - **Test**: Failing - quotes not applied to fields with commas
+   - **Fix**: Update CsvSerializer to quote fields per RFC 4180
+
+2. MUST requirement not met: UTF-8 BOM
+   - **Spec**: API-2 "SHALL support UTF-8 encoding with BOM for Excel"
+   - **Test**: Failing - BOM not present
+   - **Fix**: Add \uFEFF at start of CSV string
+
+### WARNING
+None
+
+### SUGGESTION
+None
+
+---
+
+## Verification Report
+
+**Status**: ❌ FAIL
+
+### Summary
+- 2 requirements not met
+- 2 tests failing
+- Build successful
+- 2 critical issues blocking archive
+
+### Recommendation
+**NOT ready to archive** - Fix critical issues first.
+
+1. Add UTF-8 BOM to CSV output
+2. Quote CSV fields containing special characters
+3. Re-run verification after fixes
+
+### Artifacts
+- openspec/changes/add-csv-export/verification-report.md
+
+---
+
+❌ Verification failed. Address critical issues and run `/sdd-verify` again.
+```
+
+## Verification Configuration
+
+Configure in `openspec/config.yaml`:
+
+```yaml
+schema: spec-driven
+
+# Test execution
+test_command: npm test
+build_command: npm run build
+
+# Quality gates
+coverage_threshold: 80
+
+rules:
+  verify:
+    - Run tests if test infrastructure exists
+    - Compare implementation against every spec scenario
+    - Check that all MUST/SHALL requirements are met
+    - Report TODO comments as warnings
+    - Run build to catch compilation errors
+```
+
+<ParamField path="test_command" type="string">
+  Command to run tests (e.g., `npm test`, `pytest`, `cargo test`)
+</ParamField>
+
+<ParamField path="build_command" type="string">
+  Command to build the project (e.g., `npm run build`, `go build`)
+</ParamField>
+
+<ParamField path="coverage_threshold" type="number" default="80">
+  Minimum test coverage percentage required (0-100)
+</ParamField>
+
+## Validation Criteria
+
+### MUST/SHALL Requirements
+
+All requirements using RFC 2119 keywords **MUST** or **SHALL** must be implemented:
+
+```markdown
+✓ The system SHALL persist user preferences
+✓ The API MUST return 200 on success
+✗ The service SHALL validate input before processing  ← CRITICAL if missing
+```
+
+### SHOULD Requirements
+
+Recommended but not blocking:
+
+```markdown
+✓ The UI SHOULD show loading state
+⚠️  The API SHOULD rate-limit requests  ← WARNING if missing
+```
+
+### MAY Requirements
+
+Optional features:
+
+```markdown
+⊘ The system MAY support custom themes  ← OK to skip
+```
+
+## When to Use
+
+<CardGroup cols={2}>
+  <Card title="After Implementation" icon="code">
+    Run after `/sdd-apply` completes all tasks
+  </Card>
+  <Card title="Before Archiving" icon="box-archive">
+    Always verify before running `/sdd-archive`
+  </Card>
+  <Card title="After Bug Fixes" icon="wrench">
+    Re-verify after addressing issues
+  </Card>
+  <Card title="Pre-Deployment" icon="rocket">
+    Final quality gate before release
+  </Card>
+</CardGroup>
+
+## Fixing Verification Issues
+
+When verification fails:
+
+<Steps>
+  <Step title="Review the report">
+    Read `verification-report.md` to understand all issues
+  </Step>
+  <Step title="Prioritize CRITICAL issues">
+    Fix blocking issues first (failed tests, unmet MUST requirements)
+  </Step>
+  <Step title="Address WARNINGS">
+    Fix non-blocking issues if time permits
+  </Step>
+  <Step title="Re-verify">
+    Run `/sdd-verify` again after fixes
+  </Step>
+  <Step title="Archive when passing">
+    Run `/sdd-archive` once verification passes
+  </Step>
+</Steps>
+
+## Verification Report Format
+
+The generated report includes:
+
+```markdown
+# Verification Report: {change-name}
+
+Date: 2024-03-04
+Status: PASS | FAIL | PASS WITH WARNINGS
+
+## Executive Summary
+{2-3 sentence overview}
+
+## Validation Results
+
+### Completeness
+- Tasks: X/Y complete
+- Files: All present / N missing
+- TODOs: N found
+
+### Correctness
+- Scenarios: X/Y passing
+- Requirements: MUST (X/Y), SHOULD (X/Y), MAY (X/Y)
+
+### Coherence
+- Design decisions: X/Y followed
+- Patterns: Consistent / Deviations found
+
+### Quality
+- Tests: X passing, Y failing
+- Build: Success / Failed
+- Coverage: X% (threshold: Y%)
+
+## Spec Compliance Matrix
+{Table mapping requirements to implementation}
+
+## Issues by Severity
+
+### CRITICAL
+{Blocking issues}
+
+### WARNING
+{Non-blocking issues}
+
+### SUGGESTION
+{Improvements}
+
+## Recommendation
+Ready to archive | Needs work
+{Specific next steps}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always verify before archiving">
+    Make `/sdd-verify` a mandatory step. It catches issues early and ensures quality.
+  </Accordion>
+  
+  <Accordion title="Fix CRITICAL issues immediately">
+    Don't ignore failed tests or unmet requirements. These indicate incomplete implementation.
+  </Accordion>
+  
+  <Accordion title="Document known issues">
+    If you intentionally skip a SHOULD requirement, add a note in the proposal explaining why.
+  </Accordion>
+  
+  <Accordion title="Use verification as code review">
+    The compliance matrix serves as a checklist for manual code review.
+  </Accordion>
+</AccordionGroup>
+
+## Related Commands
+
+- [/sdd-apply](/commands/sdd-apply) - Implement before verifying
+- [/sdd-archive](/commands/sdd-archive) - Archive after successful verification
+- [/sdd-continue](/commands/sdd-continue) - Alternative workflow progression

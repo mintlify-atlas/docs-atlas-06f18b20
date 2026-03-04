@@ -1,0 +1,622 @@
+---
+title: TDD Workflow (v2.0)
+description: Test-Driven Development with Agent Teams Lite's RED-GREEN-REFACTOR cycle
+icon: "vial-circle-check"
+---
+
+## Overview
+
+Agent Teams Lite v2.0 introduces full TDD (Test-Driven Development) support in the `sdd-apply` sub-agent. When enabled, the implementer follows a strict RED-GREEN-REFACTOR cycle for every task.
+
+<Note>
+TDD mode ensures tests are written **first**, driving implementation from acceptance criteria defined in specs. This prevents untested code and validates that tests actually catch failures.
+</Note>
+
+## The RED-GREEN-REFACTOR Cycle
+
+Every task follows this cycle when TDD is enabled:
+
+```
+FOR EACH TASK:
+├── 1. UNDERSTAND
+│   ├── Read the task description
+│   ├── Read relevant spec scenarios (acceptance criteria)
+│   ├── Read the design decisions (constraints)
+│   └── Read existing code and test patterns
+│
+├── 2. RED — Write a failing test FIRST
+│   ├── Write test(s) that describe expected behavior from spec scenarios
+│   ├── Run tests — confirm they FAIL
+│   └── If test passes immediately → behavior exists or test is wrong
+│
+├── 3. GREEN — Write minimum code to pass
+│   ├── Implement ONLY what's needed to make tests pass
+│   ├── Run tests — confirm they PASS
+│   └── Do NOT add extra functionality beyond test requirements
+│
+├── 4. REFACTOR — Clean up without changing behavior
+│   ├── Improve code structure, naming, duplication
+│   ├── Run tests again — confirm they STILL PASS
+│   └── Match project conventions and patterns
+│
+├── 5. Mark task as complete [x] in tasks.md
+└── 6. Note any issues or deviations
+```
+
+## Enabling TDD Mode
+
+### Detection Priority
+
+The `sdd-apply` sub-agent detects TDD mode from (in priority order):
+
+1. **`openspec/config.yaml`** → `rules.apply.tdd` (true/false — highest priority)
+2. **User's installed skills** — e.g., `tdd/SKILL.md` exists
+3. **Existing test patterns** — test files alongside source in codebase
+4. **Default** — standard mode (write code first, then verify)
+
+### Configuration
+
+#### Method 1: OpenSpec Config (Recommended)
+
+```yaml
+# openspec/config.yaml
+rules:
+  apply:
+    tdd: true                    # Enable TDD workflow
+    test_command: "npm test"     # How to run tests
+```
+
+#### Method 2: Orchestrator Config
+
+Pass TDD mode when launching the implementer:
+
+```json
+{
+  "change_name": "add-csv-export",
+  "tasks": "Phase 1, tasks 1.1-1.3",
+  "artifact_store": {
+    "mode": "engram"
+  },
+  "tdd_mode": true,
+  "test_command": "pytest tests/"
+}
+```
+
+### Test Command Detection
+
+If `test_command` is not explicitly configured, the system detects it from:
+
+```
+Detect test runner from:
+├── openspec/config.yaml → rules.apply.test_command (highest priority)
+├── package.json → scripts.test
+├── pyproject.toml / pytest.ini → pytest
+├── Makefile → make test
+└── Fallback: report that tests couldn't be run automatically
+```
+
+## The RED Phase: Writing Failing Tests
+
+### Purpose
+
+Writing a **failing test first** ensures:
+- The test actually validates the behavior
+- You understand the requirements before coding
+- The test catches real failures (not false positives)
+
+<Warning>
+**Critical:** If the test passes immediately, either the behavior already exists or the test is wrong. Investigate before proceeding.
+</Warning>
+
+### Example: RED Phase
+
+**Task:** 1.1 Add CSV export endpoint
+
+**Spec Scenario:**
+```markdown
+#### Scenario: Export observations to CSV
+- GIVEN the user has 3 observations stored
+- WHEN the user requests CSV export via GET /api/export/csv
+- THEN a CSV file is returned
+- AND the response has Content-Type: text/csv
+- AND the CSV contains headers: id,title,content,created_at
+- AND the CSV contains 3 data rows
+```
+
+**Test (RED — should fail):**
+
+```python
+# tests/test_export.py
+import pytest
+from app import create_app
+
+
+def test_csv_export_endpoint():
+    """Test CSV export returns valid CSV with correct headers and data."""
+    # GIVEN: 3 observations in database
+    app = create_app('testing')
+    with app.test_client() as client:
+        # Setup: create 3 observations
+        client.post('/api/observations', json={'title': 'Obs 1', 'content': 'Content 1'})
+        client.post('/api/observations', json={'title': 'Obs 2', 'content': 'Content 2'})
+        client.post('/api/observations', json={'title': 'Obs 3', 'content': 'Content 3'})
+        
+        # WHEN: request CSV export
+        response = client.get('/api/export/csv')
+        
+        # THEN: valid CSV returned
+        assert response.status_code == 200
+        assert response.headers['Content-Type'] == 'text/csv'
+        
+        csv_data = response.data.decode('utf-8')
+        lines = csv_data.strip().split('\n')
+        
+        # Validate headers
+        headers = lines[0]
+        assert headers == 'id,title,content,created_at'
+        
+        # Validate 3 data rows
+        assert len(lines) == 4  # 1 header + 3 data rows
+```
+
+**Run test (should FAIL):**
+```bash
+$ pytest tests/test_export.py::test_csv_export_endpoint
+E   AssertionError: 404 != 200  # Endpoint doesn't exist yet
+FAILED tests/test_export.py::test_csv_export_endpoint
+```
+
+✅ **Test fails as expected.** Proceed to GREEN.
+
+## The GREEN Phase: Minimal Implementation
+
+### Purpose
+
+Write **only the code needed** to make the failing test pass. No extra features, no premature optimization.
+
+<Note>
+The goal is to get to passing tests as quickly as possible. You'll improve the code in the REFACTOR phase.
+</Note>
+
+### Example: GREEN Phase
+
+**Implementation:**
+
+```python
+# app/routes/export.py
+from flask import Blueprint, Response
+from app.models import Observation
+import csv
+import io
+
+export_bp = Blueprint('export', __name__)
+
+
+@export_bp.route('/api/export/csv', methods=['GET'])
+def export_csv():
+    """Export all observations to CSV format."""
+    # Get all observations
+    observations = Observation.query.all()
+    
+    # Create CSV in memory
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write headers
+    writer.writerow(['id', 'title', 'content', 'created_at'])
+    
+    # Write data rows
+    for obs in observations:
+        writer.writerow([obs.id, obs.title, obs.content, obs.created_at.isoformat()])
+    
+    # Return CSV response
+    csv_data = output.getvalue()
+    return Response(
+        csv_data,
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment; filename=observations.csv'}
+    )
+```
+
+**Register blueprint:**
+
+```python
+# app/__init__.py
+from app.routes.export import export_bp
+
+def create_app(config_name):
+    app = Flask(__name__)
+    # ... other setup ...
+    app.register_blueprint(export_bp)
+    return app
+```
+
+**Run test (should PASS):**
+```bash
+$ pytest tests/test_export.py::test_csv_export_endpoint
+tests/test_export.py::test_csv_export_endpoint PASSED
+```
+
+✅ **Test passes.** Proceed to REFACTOR.
+
+## The REFACTOR Phase: Clean Up
+
+### Purpose
+
+Improve code quality **without changing behavior**. Tests must still pass after refactoring.
+
+<Accordion title="Refactoring Opportunities">
+
+- Extract helper functions
+- Remove duplication
+- Improve naming
+- Match project patterns
+- Add documentation
+- Simplify logic
+
+</Accordion>
+
+### Example: REFACTOR Phase
+
+**Improvements:**
+
+```python
+# app/routes/export.py
+from flask import Blueprint, Response
+from app.models import Observation
+from app.services.csv_exporter import ObservationCSVExporter
+
+export_bp = Blueprint('export', __name__)
+
+
+@export_bp.route('/api/export/csv', methods=['GET'])
+def export_csv():
+    """Export all observations to CSV format.
+    
+    Returns:
+        Response: CSV file with all observations
+    """
+    observations = Observation.query.all()
+    exporter = ObservationCSVExporter()
+    csv_data = exporter.export(observations)
+    
+    return Response(
+        csv_data,
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment; filename=observations.csv'}
+    )
+```
+
+```python
+# app/services/csv_exporter.py
+import csv
+import io
+from typing import List
+from app.models import Observation
+
+
+class ObservationCSVExporter:
+    """Service for exporting observations to CSV format."""
+    
+    HEADERS = ['id', 'title', 'content', 'created_at']
+    
+    def export(self, observations: List[Observation]) -> str:
+        """Export observations to CSV string.
+        
+        Args:
+            observations: List of Observation models to export
+            
+        Returns:
+            CSV formatted string with headers and data
+        """
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        writer.writerow(self.HEADERS)
+        
+        for obs in observations:
+            writer.writerow([
+                obs.id,
+                obs.title,
+                obs.content,
+                obs.created_at.isoformat()
+            ])
+        
+        return output.getvalue()
+```
+
+**Run tests again (should STILL PASS):**
+```bash
+$ pytest tests/test_export.py::test_csv_export_endpoint
+tests/test_export.py::test_csv_export_endpoint PASSED
+```
+
+✅ **Tests still pass.** Refactoring successful.
+
+**Mark task complete:**
+```markdown
+- [x] 1.1 Add CSV export endpoint
+```
+
+## Implementation Progress Report
+
+When TDD mode is active, the implementer returns a detailed test execution report:
+
+```markdown
+## Implementation Progress
+
+**Change**: add-csv-export
+**Mode**: TDD
+
+### Completed Tasks
+- [x] 1.1 Add CSV export endpoint
+- [x] 1.2 Add CSV export button to UI
+
+### Files Changed
+| File | Action | What Was Done |
+|------|--------|---------------|
+| `app/routes/export.py` | Created | CSV export endpoint |
+| `app/services/csv_exporter.py` | Created | CSV export service |
+| `tests/test_export.py` | Created | Test for CSV export |
+| `app/__init__.py` | Modified | Registered export blueprint |
+
+### Tests (TDD mode)
+| Task | Test File | RED (fail) | GREEN (pass) | REFACTOR |
+|------|-----------|------------|--------------|----------|
+| 1.1 | `tests/test_export.py` | ✅ Failed as expected | ✅ Passed | ✅ Clean |
+| 1.2 | `tests/ui/test_export_button.py` | ✅ Failed as expected | ✅ Passed | ✅ Clean |
+
+### Deviations from Design
+None — implementation matches design.
+
+### Issues Found
+None.
+
+### Remaining Tasks
+- [ ] 1.3 Add CSV export for filtered observations
+- [ ] 2.1 Add PDF export endpoint
+
+### Status
+2/4 tasks complete. Ready for next batch.
+```
+
+## Test Pattern Detection
+
+The implementer detects and follows project-specific test patterns:
+
+### Detecting Test Frameworks
+
+<Accordion title="Framework Detection Logic">
+
+**JavaScript/TypeScript:**
+- `package.json` → `jest`, `vitest`, `mocha`, `ava`
+- Check for `*.test.js`, `*.spec.js` files
+- Look for test config files: `jest.config.js`, `vitest.config.ts`
+
+**Python:**
+- `pyproject.toml`, `pytest.ini`, `setup.py` → `pytest`, `unittest`
+- Check for `test_*.py`, `*_test.py` files
+- Look for `conftest.py` (pytest)
+
+**Go:**
+- Check for `*_test.go` files
+- Standard library `testing` package
+
+**Ruby:**
+- `Gemfile` → `rspec`, `minitest`
+- Check for `spec/` or `test/` directories
+
+</Accordion>
+
+### Following Project Patterns
+
+The implementer reads existing test files to match:
+- File naming conventions
+- Test structure and organization
+- Assertion styles
+- Mocking patterns
+- Setup/teardown approaches
+
+<Note>
+If user-installed skills exist (e.g., `pytest/SKILL.md`, `vitest/SKILL.md`), the implementer reads and follows those skill patterns for writing tests.
+</Note>
+
+## Integration with Specs
+
+TDD mode uses spec scenarios as acceptance criteria:
+
+```markdown
+# Delta Spec
+
+## ADDED Requirements
+
+### Requirement: CSV Export
+The system SHALL support exporting observations to CSV.
+
+#### Scenario: Export with data
+- GIVEN the user has 3 observations
+- WHEN the user requests CSV export
+- THEN a CSV file is returned
+- AND headers are: id,title,content,created_at
+- AND 3 data rows are included
+
+#### Scenario: Export with no data
+- GIVEN the user has 0 observations
+- WHEN the user requests CSV export
+- THEN a CSV file is returned
+- AND headers are: id,title,content,created_at
+- AND no data rows are included
+```
+
+**Maps to tests:**
+
+```python
+def test_csv_export_with_data():
+    """Scenario: Export with data"""
+    # Test implementation from scenario
+
+def test_csv_export_with_no_data():
+    """Scenario: Export with no data"""
+    # Test implementation from scenario
+```
+
+<Note>
+Each Given/When/Then scenario typically becomes one test case. Complex scenarios may need multiple test cases.
+</Note>
+
+## Standard Mode vs TDD Mode
+
+| Aspect | Standard Mode | TDD Mode |
+|--------|---------------|----------|
+| **Test timing** | After implementation | Before implementation |
+| **Cycle** | Code → Test → Verify | RED → GREEN → REFACTOR |
+| **Validation** | Tests run during verify phase | Tests run continuously during apply |
+| **Test coverage** | Optional | Required for every task |
+| **Failure detection** | Post-implementation | Immediate (RED phase) |
+| **Refactoring** | Manual, risky | Safe (tests protect behavior) |
+
+## When to Use TDD Mode
+
+### Use TDD When:
+
+✅ Building critical functionality
+✅ Working with complex business logic
+✅ Requirements are well-defined (specs exist)
+✅ Test coverage is important
+✅ Refactoring is expected
+✅ Team values test-first development
+
+### Use Standard Mode When:
+
+⏩ Prototyping or exploring
+⏩ Working with UI-heavy features (e.g., styling)
+⏩ Requirements are vague
+⏩ Quick iteration is priority
+⏩ Tests are difficult to write (e.g., integration with external systems)
+
+<Warning>
+TDD adds time to each task (write test, run test, refactor). Ensure the project benefits justify the investment.
+</Warning>
+
+## Running Tests During TDD
+
+### Scoped Test Execution
+
+<Note>
+**Performance tip:** During TDD, run ONLY the relevant test file/suite, not the entire test suite.
+</Note>
+
+**Examples:**
+
+```bash
+# pytest - single test function
+pytest tests/test_export.py::test_csv_export_with_data
+
+# pytest - single file
+pytest tests/test_export.py
+
+# Jest - single file
+npm test -- tests/export.test.js
+
+# Jest - watch mode
+npm test -- --watch tests/export.test.js
+
+# Vitest - single file
+npx vitest tests/export.test.ts
+```
+
+### Test Output in Reports
+
+The implementer captures test output for each phase:
+
+```markdown
+### Test Execution: Task 1.1
+
+**RED Phase:**
+```
+$ pytest tests/test_export.py::test_csv_export_with_data
+FAILED tests/test_export.py::test_csv_export_with_data - AssertionError: 404 != 200
+```
+✅ Test failed as expected
+
+**GREEN Phase:**
+```
+$ pytest tests/test_export.py::test_csv_export_with_data
+PASSED tests/test_export.py::test_csv_export_with_data
+```
+✅ Test passed after implementation
+
+**REFACTOR Phase:**
+```
+$ pytest tests/test_export.py::test_csv_export_with_data
+PASSED tests/test_export.py::test_csv_export_with_data
+```
+✅ Test still passes after refactoring
+```
+
+## Best Practices
+
+<Accordion title="TDD Best Practices">
+
+### 1. Write the Simplest Test First
+Start with the happy path, add edge cases later.
+
+### 2. One Test at a Time
+Don't write multiple failing tests. One RED → GREEN → REFACTOR cycle per test.
+
+### 3. Test Behavior, Not Implementation
+Test **what** the code does, not **how** it does it.
+
+### 4. Keep Tests Independent
+Each test should run in isolation and not depend on other tests.
+
+### 5. Refactor Tests Too
+Apply the same quality standards to test code as production code.
+
+### 6. Fast Feedback
+Tests should run quickly. Slow tests discourage running them frequently.
+
+### 7. Use Descriptive Test Names
+Test names should describe the scenario being tested.
+
+```python
+# Good
+def test_csv_export_returns_404_when_user_not_authenticated():
+
+# Bad
+def test_export():
+```
+
+</Accordion>
+
+## Verification Phase
+
+After implementation, the `sdd-verify` sub-agent (v2.0) runs the full test suite:
+
+```
+/sdd-verify
+→ Runs complete test suite
+→ Runs build command
+→ Checks coverage (if configured)
+→ Maps specs to test results
+→ Reports: CRITICAL / WARNING / SUGGESTION
+```
+
+See [sdd-verify documentation](/reference/sub-agents/verify) for details.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Complete Workflow" icon="diagram-project" href="/guides/workflow">
+    Learn the full SDD workflow
+  </Card>
+  <Card title="Delta Specs" icon="code-compare" href="/guides/delta-specs">
+    How specs become acceptance criteria
+  </Card>
+  <Card title="Implementer Sub-Agent" icon="code" href="/sub-agents/implementer">
+    Deep dive into sdd-apply v2.0
+  </Card>
+  <Card title="Verifier Sub-Agent" icon="check-double" href="/sub-agents/verifier">
+    Deep dive into sdd-verify v2.0
+  </Card>
+</CardGroup>

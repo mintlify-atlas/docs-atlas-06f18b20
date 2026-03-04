@@ -1,80 +1,463 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: "Quick Start"
+description: "Get Agent Teams Lite running in 5 minutes"
 ---
 
-## Get started in three steps
+Get started with Agent Teams Lite in three simple steps: install the skills, configure your AI assistant, and start building.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+You need one of these AI assistants:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+<CardGroup cols={3}>
+  <Card title="Claude Code" icon="terminal" href="/installation/claude-code">
+    Full sub-agent support via Task tool
+  </Card>
+  <Card title="OpenCode" icon="code" href="/installation/opencode">
+    Full sub-agent support via Task tool
+  </Card>
+  <Card title="Gemini CLI" icon="gem" href="/installation/gemini-cli">
+    Inline skill execution
+  </Card>
+  <Card title="Codex" icon="brackets-curly" href="/installation/codex">
+    Inline skill execution
+  </Card>
+  <Card title="VS Code Copilot" icon="microsoft" href="/installation/vscode">
+    Agent mode with context files
+  </Card>
+  <Card title="Antigravity" icon="rocket" href="/installation/antigravity">
+    Native skill support
+  </Card>
+  <Card title="Cursor" icon="arrow-pointer" href="/installation/cursor">
+    Inline skill execution
+  </Card>
+  <Card title="Other Tools" icon="ellipsis" href="/installation/overview">
+    Any tool that can read Markdown
+  </Card>
 </CardGroup>
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+For the best sub-agent experience with fresh context windows, use **Claude Code** or **OpenCode**. Other tools work great but run skills inline.
 </Note>
+
+## Step 1: Install the Skills
+
+<Steps>
+
+<Step title="Clone the repository">
+Clone Agent Teams Lite to your local machine:
+
+```bash
+git clone https://github.com/gentleman-programming/agent-teams-lite.git
+cd agent-teams-lite
+```
+</Step>
+
+<Step title="Run the installer">
+The installer detects your AI tool and copies skills to the right location:
+
+```bash
+./scripts/install.sh
+```
+
+You'll see a menu like this:
+
+```
+Select your tool:
+1) Claude Code
+2) OpenCode
+3) Cursor
+4) Gemini CLI
+5) Codex
+6) VS Code (Copilot)
+7) Antigravity
+8) Other
+```
+
+Choose your tool and the installer will:
+- Copy the 9 sub-agent skills to your tool's skill directory
+- Copy shared conventions (`persistence-contract.md`, `engram-convention.md`, `openspec-convention.md`)
+- For OpenCode: also install slash commands
+</Step>
+
+<Step title="Verify installation">
+Check that the skills were copied correctly:
+
+```bash
+# For Claude Code
+ls ~/.claude/skills/sdd-*
+
+# For OpenCode
+ls ~/.config/opencode/skills/sdd-*
+
+# For Cursor
+ls ~/.cursor/skills/sdd-*
+```
+
+You should see 9 directories: `sdd-init`, `sdd-explore`, `sdd-propose`, `sdd-spec`, `sdd-design`, `sdd-tasks`, `sdd-apply`, `sdd-verify`, `sdd-archive`.
+</Step>
+
+</Steps>
+
+## Step 2: Add the Orchestrator
+
+The orchestrator is the main agent that coordinates sub-agents. Add it to your AI assistant's configuration.
+
+<CodeGroup>
+
+```markdown Claude Code: ~/.claude/CLAUDE.md
+# Append to your existing CLAUDE.md
+
+## Spec-Driven Development (SDD) Orchestrator
+
+You are an orchestrator for the SDD workflow. You delegate all phase work to sub-agents via the Task tool.
+
+### Your Responsibilities
+- Detect when SDD is needed (new feature, substantial change)
+- Launch sub-agents via Task tool with skill file paths
+- Show summaries to user between phases
+- Ask for approval before continuing
+- Track state: which artifacts exist, what's next
+
+### Sub-Agent Pattern
+When launching a sub-agent:
+1. Use Task tool with subagent_type: 'general'
+2. Pass skill file path: "Read and follow ~/.claude/skills/sdd-{phase}/SKILL.md"
+3. Include context: change name, artifact store mode, dependencies
+4. Wait for structured result envelope
+5. Show executive_summary to user
+
+### Artifact Store Mode
+- Default: engram (if available)
+- Fallback: none
+- Only use openspec if user explicitly requests file artifacts
+
+### Commands
+- /sdd-init — Initialize SDD context
+- /sdd-new <name> — Start new change (explore → propose)
+- /sdd-continue — Run next dependency-ready phase
+- /sdd-ff <name> — Fast-forward planning (propose → specs → design → tasks)
+- /sdd-apply — Implement tasks
+- /sdd-verify — Validate implementation
+- /sdd-archive — Close change
+```
+
+```json OpenCode: ~/.config/opencode/opencode.json
+{
+  "agents": {
+    "sdd-orchestrator": {
+      "name": "SDD Orchestrator",
+      "modelId": "claude-4.5-sonnet",
+      "visibility": "all",
+      "provider": "helicone",
+      "systemPrompt": "You are an orchestrator for the Spec-Driven Development (SDD) workflow. You delegate all phase work to sub-agents via the Task tool.\n\nYour responsibilities:\n- Detect when SDD is needed\n- Launch sub-agents via Task tool with skill file paths\n- Show summaries to user between phases\n- Ask for approval before continuing\n- Track state\n\nSub-Agent Pattern:\n1. Use Task tool with subagent_type: 'general'\n2. Pass skill file path: 'Read and follow ~/.config/opencode/skills/sdd-{phase}/SKILL.md'\n3. Include context: change name, artifact store mode\n4. Wait for structured result envelope\n5. Show executive_summary to user\n\nArtifact Store Mode:\n- Default: engram (if available)\n- Fallback: none\n- Only use openspec if user explicitly requests file artifacts\n\nCommands: /sdd-init, /sdd-new, /sdd-continue, /sdd-ff, /sdd-apply, /sdd-verify, /sdd-archive"
+    }
+  }
+}
+```
+
+```markdown Cursor: .cursorrules
+# Append to your project's .cursorrules
+
+## Spec-Driven Development (SDD) Orchestrator
+
+You coordinate the SDD workflow by reading skill files as inline instructions.
+
+### Your Responsibilities
+- Detect when SDD is needed
+- Read skill files from ./skills/sdd-{phase}/SKILL.md
+- Show summaries to user between phases
+- Ask for approval before continuing
+- Track state
+
+### Skill Pattern
+When executing a phase:
+1. Read the skill file: ./skills/sdd-{phase}/SKILL.md
+2. Follow the instructions exactly
+3. Return structured result
+4. Show executive_summary to user
+
+### Artifact Store Mode
+- Default: none (Cursor has no Engram integration)
+- Use openspec if user explicitly requests file artifacts
+
+### Commands
+- /sdd-init, /sdd-new, /sdd-continue, /sdd-ff, /sdd-apply, /sdd-verify, /sdd-archive
+```
+
+</CodeGroup>
+
+<Info>
+See the [Installation](/installation/overview) section for detailed setup instructions for your specific tool.
+</Info>
+
+## Step 3: Use It
+
+Open your AI assistant in any project and start building!
+
+<Steps>
+
+<Step title="Initialize SDD">
+Tell your AI assistant to initialize SDD context:
+
+```
+/sdd-init
+```
+
+The orchestrator will:
+- Detect your project's tech stack
+- Identify conventions (linters, test frameworks)
+- Bootstrap the persistence backend (Engram or OpenSpec)
+- Report what it found
+
+Example output:
+```
+## SDD Initialized
+
+**Project**: my-app
+**Stack**: React 18 + TypeScript + Tailwind CSS
+**Persistence**: engram
+
+### Context Saved
+Project context persisted to Engram.
+- **Engram ID**: #abc123
+- **Topic key**: sdd-init/my-app
+
+No project files created.
+
+### Next Steps
+Ready for /sdd-explore <topic> or /sdd-new <change-name>.
+```
+</Step>
+
+<Step title="Start a new feature">
+Describe what you want to build:
+
+```
+/sdd-new add-dark-mode
+```
+
+The orchestrator will:
+1. Launch **Explorer** sub-agent to investigate the codebase
+2. Show you the exploration summary
+3. Launch **Proposer** sub-agent to create a proposal
+4. Show you the proposal and ask if you want to continue
+
+Example flow:
+```
+AI:  Launching explorer sub-agent...
+     ✓ Codebase analyzed. React + Tailwind detected.
+     ✓ Current theme: hardcoded light mode in globals.css
+     
+     Launching proposal sub-agent...
+     ✓ proposal.md created
+       Intent: Add dark mode toggle with system preference detection
+       Scope: Theme context, toggle component, CSS variables
+     
+     Want me to continue with specs and design? (or review the proposal first)
+```
+</Step>
+
+<Step title="Continue the workflow">
+If you approve, continue to the next phases:
+
+```
+Go ahead
+```
+
+Or use the fast-forward command to generate specs, design, and tasks:
+
+```
+/sdd-ff add-dark-mode
+```
+
+The orchestrator will:
+1. Launch **Spec Writer** and **Designer** sub-agents in parallel
+2. Show you the specs and design
+3. Launch **Task Planner** sub-agent
+4. Show you the task breakdown
+5. Ask if you're ready to implement
+
+Example output:
+```
+AI:  ✓ specs/ui/spec.md — 3 requirements, 7 scenarios
+     ✓ design.md — CSS variables approach, React Context, localStorage
+     ✓ tasks.md — 3 phases, 8 tasks
+     
+     Ready to implement. Run /sdd-apply to start.
+```
+</Step>
+
+<Step title="Implement the feature">
+When you're ready, start implementation:
+
+```
+/sdd-apply
+```
+
+The orchestrator will:
+1. Launch **Implementer** sub-agent with the first batch of tasks
+2. Write code following the specs and design
+3. Mark tasks as complete
+4. Show progress and ask if you want to continue
+
+Example flow:
+```
+AI:  Implementing Phase 1 (Foundation)...
+     ✓ 1.1 Created ThemeContext
+     ✓ 1.2 Added CSS custom properties
+     ✓ 1.3 Added localStorage persistence
+     
+     3/8 tasks complete. Continue with Phase 2?
+```
+</Step>
+
+<Step title="Verify and archive">
+After implementation, verify the feature works:
+
+```
+/sdd-verify
+```
+
+The **Verifier** sub-agent will:
+- Run your test suite (if configured)
+- Compare implementation against every spec scenario
+- Report issues at CRITICAL/WARNING/SUGGESTION levels
+
+When everything looks good, archive the change:
+
+```
+/sdd-archive
+```
+
+The **Archiver** sub-agent will:
+- Merge delta specs into main specs
+- Move the change to the archive
+- Clean up temporary artifacts
+</Step>
+
+</Steps>
+
+## Example: Complete Workflow
+
+Here's a complete example of building a CSV export feature:
+
+<Steps>
+
+<Step title="Initialize">
+```
+You: /sdd-init
+
+AI: ## SDD Initialized
+    **Project**: my-app
+    **Stack**: React 18 + TypeScript
+    **Persistence**: engram
+```
+</Step>
+
+<Step title="Explore and propose">
+```
+You: /sdd-new add-csv-export
+
+AI: Launching explorer sub-agent...
+    ✓ Found export service (currently JSON only)
+    ✓ Recommendation: Extend ExportService with CSV format
+    
+    Launching proposer sub-agent...
+    ✓ proposal.md created
+      Intent: Add CSV export format to existing export service
+      Scope: ExportService, CSV formatter, download button
+      Approach: Add new format option, implement CSV serialization
+```
+</Step>
+
+<Step title="Fast-forward to tasks">
+```
+You: /sdd-ff add-csv-export
+
+AI: ✓ specs/export/spec.md — Added CSV format requirement
+    ✓ design.md — CSV serialization strategy, file naming
+    ✓ tasks.md — 2 phases, 5 tasks
+    
+    Ready to implement.
+```
+</Step>
+
+<Step title="Implement">
+```
+You: /sdd-apply
+
+AI: Implementing Phase 1 (CSV Formatter)...
+    ✓ 1.1 Added CSVFormatter class
+    ✓ 1.2 Added header generation
+    ✓ 1.3 Added row serialization
+    
+    Implementing Phase 2 (Integration)...
+    ✓ 2.1 Extended ExportService with CSV format
+    ✓ 2.2 Added CSV download button
+    
+    All tasks complete! Run /sdd-verify to validate.
+```
+</Step>
+
+<Step title="Verify and close">
+```
+You: /sdd-verify
+
+AI: Running tests...
+    ✓ All tests passing (42/42)
+    ✓ All spec scenarios verified
+    No issues found.
+
+You: /sdd-archive
+
+AI: ✓ Delta specs merged into main specs
+    ✓ Change moved to archive/2026-03-04-add-csv-export
+    Change closed.
+```
+</Step>
+
+</Steps>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card
+    title="How It Works"
+    icon="circle-info"
+    href="/how-it-works"
+  >
+    Understand the orchestrator + sub-agent architecture
+  </Card>
+  <Card
+    title="Commands Reference"
+    icon="terminal"
+    href="/commands/overview"
+  >
+    Learn all the SDD commands in detail
+  </Card>
+  <Card
+    title="Workflow Guide"
+    icon="route"
+    href="/guides/workflow"
+  >
+    Master the complete SDD workflow
+  </Card>
+  <Card
+    title="Persistence Modes"
+    icon="database"
+    href="/guides/persistence"
+  >
+    Choose the right artifact storage for your needs
+  </Card>
+</CardGroup>
+
+## Need Help?
+
+<Card
+  title="Installation Guides"
+  icon="download"
+  href="/installation/overview"
+>
+  Detailed setup instructions for every supported AI tool
+</Card>

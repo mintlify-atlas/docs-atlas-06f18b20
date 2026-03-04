@@ -1,0 +1,137 @@
+---
+title: Commands Overview
+description: Complete reference for all SDD commands in Agent Teams Lite
+---
+
+Agent Teams Lite provides 9 slash commands for managing the Spec-Driven Development workflow. Each command delegates work to specialized sub-agents that operate with fresh context.
+
+## Available Commands
+
+<CardGroup cols={3}>
+  <Card title="/sdd-init" icon="rocket" href="/commands/sdd-init">
+    Initialize SDD in your project
+  </Card>
+  <Card title="/sdd-explore" icon="magnifying-glass" href="/commands/sdd-explore">
+    Investigate ideas and approaches
+  </Card>
+  <Card title="/sdd-new" icon="plus" href="/commands/sdd-new">
+    Start a new change
+  </Card>
+  <Card title="/sdd-continue" icon="arrow-right" href="/commands/sdd-continue">
+    Run next phase
+  </Card>
+  <Card title="/sdd-ff" icon="forward-fast" href="/commands/sdd-ff">
+    Fast-forward planning
+  </Card>
+  <Card title="/sdd-apply" icon="code" href="/commands/sdd-apply">
+    Implement tasks
+  </Card>
+  <Card title="/sdd-verify" icon="check" href="/commands/sdd-verify">
+    Validate implementation
+  </Card>
+  <Card title="/sdd-archive" icon="box-archive" href="/commands/sdd-archive">
+    Close and archive change
+  </Card>
+</CardGroup>
+
+## Command Categories
+
+### Initialization
+- **[/sdd-init](/commands/sdd-init)** - Bootstrap SDD in your project. Run this once per project to detect stack and setup persistence.
+
+### Planning
+- **[/sdd-explore](/commands/sdd-explore)** - Research and investigate without creating files. Compare approaches, identify risks.
+- **[/sdd-new](/commands/sdd-new)** - Start a new change. Runs exploration then creates proposal.
+- **[/sdd-ff](/commands/sdd-ff)** - Fast-forward through all planning phases (proposal → specs → design → tasks).
+- **[/sdd-continue](/commands/sdd-continue)** - Run the next phase in the dependency chain.
+
+### Implementation
+- **[/sdd-apply](/commands/sdd-apply)** - Write code following specs and design. Supports TDD workflow.
+
+### Validation
+- **[/sdd-verify](/commands/sdd-verify)** - Validate implementation against specs. Runs tests and produces compliance matrix.
+
+### Completion
+- **[/sdd-archive](/commands/sdd-archive)** - Merge specs and archive the completed change.
+
+## Typical Workflows
+
+### Full Structured Workflow
+```bash
+/sdd-init                  # One-time setup
+/sdd-new add-dark-mode     # Start change
+# Review proposal
+/sdd-continue              # Generate specs
+/sdd-continue              # Generate design
+/sdd-continue              # Generate tasks
+/sdd-apply                 # Implement
+/sdd-verify                # Validate
+/sdd-archive               # Close
+```
+
+### Fast Planning Workflow
+```bash
+/sdd-init
+/sdd-ff add-dark-mode      # Create proposal, specs, design, tasks
+/sdd-apply                 # Implement
+/sdd-verify                # Validate
+/sdd-archive               # Close
+```
+
+### Exploration Only
+```bash
+/sdd-init
+/sdd-explore "state management options"  # Research without creating change
+# Review analysis, then decide
+/sdd-new implement-zustand                # Start change if approved
+```
+
+## Command Characteristics
+
+| Command | Creates Artifacts | Modifies Code | User Approval |
+|---------|------------------|---------------|---------------|
+| /sdd-init | Yes (config) | No | No |
+| /sdd-explore | No | No | No |
+| /sdd-new | Yes (proposal) | No | Between phases |
+| /sdd-continue | Yes (next artifact) | No | Between phases |
+| /sdd-ff | Yes (4 artifacts) | No | After all phases |
+| /sdd-apply | Yes (progress) | Yes | Between task batches |
+| /sdd-verify | Yes (report) | No | Before archive |
+| /sdd-archive | Yes (archive) | No | No |
+
+## Sub-Agent Delegation
+
+All SDD commands work by delegating to specialized sub-agents via the Task tool. This architecture keeps the orchestrator lightweight and gives each phase fresh context.
+
+```
+YOU → /sdd-new add-csv-export
+      ↓
+  ORCHESTRATOR (delegate-only)
+      ↓
+      ├→ EXPLORER sub-agent    → returns analysis
+      ├→ PROPOSER sub-agent    → returns proposal
+      ├→ SPEC WRITER sub-agent → returns specs
+      ├→ DESIGNER sub-agent    → returns design
+      ├→ TASK PLANNER          → returns tasks
+      ├→ IMPLEMENTER           → returns code
+      ├→ VERIFIER              → returns report
+      └→ ARCHIVER              → returns archive
+```
+
+## Persistence Modes
+
+All commands respect the configured artifact store mode:
+
+- **engram** (recommended) - Artifacts stored in Engram. Zero project files.
+- **openspec** - Artifacts in `openspec/` directory. Full file-based workflow.
+- **none** - Ephemeral artifacts. Nothing persisted between sessions.
+
+See [Artifact Storage](/core-concepts/artifact-storage) for details.
+
+## Getting Started
+
+Start with the initialization command:
+
+<Card title="Initialize SDD" icon="rocket" href="/commands/sdd-init">
+  Run `/sdd-init` to bootstrap SDD in your project
+</Card>

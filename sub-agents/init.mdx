@@ -1,0 +1,184 @@
+---
+title: Init Sub-Agent
+description: Initialize Spec-Driven Development context in any project
+---
+
+The **sdd-init** sub-agent bootstraps the Spec-Driven Development (SDD) workflow in a project by detecting the stack, understanding conventions, and initializing the persistence backend.
+
+## Metadata
+
+<ResponseField name="name" type="string">
+`sdd-init`
+</ResponseField>
+
+<ResponseField name="version" type="string">
+`2.0`
+</ResponseField>
+
+<ResponseField name="author" type="string">
+`gentleman-programming`
+</ResponseField>
+
+<ResponseField name="license" type="string">
+`MIT`
+</ResponseField>
+
+## When It's Triggered
+
+The orchestrator launches `sdd-init` when:
+- User says "sdd init", "iniciar sdd", or "openspec init"
+- User wants to initialize SDD in a project
+- First time using SDD in a new workspace
+
+## What It Does
+
+### Step 1: Detect Project Context
+
+Reads the project to understand:
+- **Tech stack**: Checks `package.json`, `go.mod`, `pyproject.toml`, `Cargo.toml`, etc.
+- **Existing conventions**: Linters, formatters, test frameworks, CI configuration
+- **Architecture patterns**: Monorepo, microservices, MVC, etc.
+
+### Step 2: Resolve Persistence Mode
+
+Follows the [persistence contract](/sub-agents/persistence-contract) to determine:
+- `engram` — if Engram tool is available
+- `openspec` — if explicitly requested by the orchestrator
+- `none` — fallback (ephemeral)
+
+### Step 3: Bootstrap Persistence Backend
+
+#### If mode is `engram`:
+- Persists project context to Engram with topic_key: `sdd-init/{project-name}`
+- Does NOT create `openspec/` directory
+- Returns observation ID
+
+#### If mode is `openspec`:
+Creates this structure:
+
+```
+openspec/
+├── config.yaml              ← Project-specific SDD config
+├── specs/                   ← Source of truth (empty initially)
+└── changes/                 ← Active changes
+    └── archive/             ← Completed changes
+```
+
+Generates `config.yaml` based on detected context:
+
+```yaml
+schema: spec-driven
+
+context: |
+  Tech stack: React 19, TypeScript, Vite, Vitest
+  Architecture: Component-based UI with hooks
+  Testing: Vitest + React Testing Library
+  Style: ESLint + Prettier
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Identify affected modules/packages
+  specs:
+    - Use Given/When/Then format for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+  tasks:
+    - Group tasks by phase (infrastructure, implementation, testing)
+    - Use hierarchical numbering (1.1, 1.2, etc.)
+    - Keep tasks small enough to complete in one session
+  apply:
+    - Follow existing code patterns and conventions
+    - Load relevant coding skills for the project stack
+  verify:
+    - Run tests if test infrastructure exists
+    - Compare implementation against every spec scenario
+  archive:
+    - Warn before merging destructive deltas (large removals)
+```
+
+#### If mode is `none`:
+- Returns detected context inline only
+- Recommends enabling `engram` or `openspec` for persistence
+
+### Step 4: Return Summary
+
+Returns a [result envelope](/sub-agents/result-contract) adapted to the persistence mode.
+
+## Result Envelope Examples
+
+### Engram Mode
+
+```markdown
+## SDD Initialized
+
+**Project**: my-app
+**Stack**: React 19, TypeScript, Vite, Vitest
+**Persistence**: engram
+
+### Context Saved
+Project context persisted to Engram.
+- **Engram ID**: #obs_abc123
+- **Topic key**: sdd-init/my-app
+
+No project files created.
+
+### Next Steps
+Ready for /sdd-explore <topic> or /sdd-new <change-name>.
+```
+
+### OpenSpec Mode
+
+```markdown
+## SDD Initialized
+
+**Project**: my-app
+**Stack**: React 19, TypeScript, Vite, Vitest
+**Persistence**: openspec
+
+### Structure Created
+- openspec/config.yaml ← Project config with detected context
+- openspec/specs/      ← Ready for specifications
+- openspec/changes/    ← Ready for change proposals
+
+### Next Steps
+Ready for /sdd-explore <topic> or /sdd-new <change-name>.
+```
+
+### None Mode
+
+```markdown
+## SDD Initialized
+
+**Project**: my-app
+**Stack**: React 19, TypeScript, Vite, Vitest
+**Persistence**: none (ephemeral)
+
+### Context Detected
+- React 19 with TypeScript
+- Vite build tool
+- Vitest for testing
+- ESLint + Prettier for code quality
+
+### Recommendation
+Enable `engram` or `openspec` for artifact persistence across sessions. Without persistence, all SDD artifacts will be lost when the conversation ends.
+
+### Next Steps
+Ready for /sdd-explore <topic> or /sdd-new <change-name>.
+```
+
+## Rules
+
+- **NEVER create placeholder spec files** — specs are created via sdd-spec during a change
+- **ALWAYS detect the real tech stack** — don't guess
+- If `openspec/` already exists, report what's there and ask if it should be updated
+- Keep `config.yaml` context **CONCISE** — no more than 10 lines
+- Return a structured envelope with: `status`, `executive_summary`, `detailed_report`, `artifacts`, `next_recommended`, and `risks`
+
+## Related
+
+- [Persistence Contract](/sub-agents/persistence-contract)
+- [Engram Convention](/sub-agents/engram-convention)
+- [OpenSpec Convention](/sub-agents/openspec-convention)

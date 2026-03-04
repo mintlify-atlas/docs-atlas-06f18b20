@@ -1,0 +1,440 @@
+---
+title: Delta Specs Explained
+description: Understanding delta specifications and the archive cycle in Agent Teams Lite
+icon: "code-compare"
+---
+
+## Overview
+
+Delta specs are a core concept in Agent Teams Lite. Instead of rewriting entire specifications, changes describe only **what's different**.
+
+This approach:
+- Keeps specs maintainable
+- Preserves the source of truth
+- Creates a clear audit trail
+- Enables automatic merging during archive
+
+<Note>
+Delta specs are change-scoped modifications that describe ADDED, MODIFIED, or REMOVED requirements relative to the main specs.
+</Note>
+
+## The Core Concept
+
+Instead of duplicating the entire specification and making changes, delta specs express only the differences:
+
+```markdown
+## ADDED Requirements
+
+### Requirement: CSV Export
+The system SHALL support exporting data to CSV format.
+
+#### Scenario: Export all observations
+- GIVEN the user has observations stored
+- WHEN the user requests CSV export
+- THEN a CSV file is generated with all observations
+- AND column headers match the observation fields
+
+## MODIFIED Requirements
+
+### Requirement: Data Export
+The system SHALL support multiple export formats.
+(Previously: The system SHALL support JSON export.)
+```
+
+## Directory Structure
+
+Delta specs live in the change directory, separate from main specs:
+
+```
+openspec/
+├── specs/                           ← SOURCE OF TRUTH (how system works TODAY)
+│   ├── auth/spec.md
+│   ├── export/spec.md
+│   └── ui/spec.md
+└── changes/
+    └── add-csv-export/              ← Active change
+        ├── proposal.md
+        ├── specs/                   ← DELTA SPECS (what's changing)
+        │   └── export/spec.md       ← Only contains ADDED/MODIFIED/REMOVED
+        ├── design.md
+        └── tasks.md
+```
+
+<Accordion title="Main Specs vs Delta Specs">
+
+**Main Specs** (`openspec/specs/`):
+- Describe how the system works **RIGHT NOW**
+- Source of truth for current behavior
+- Updated only during archive phase
+- Complete, standalone specifications
+
+**Delta Specs** (`openspec/changes/{change-name}/specs/`):
+- Describe **what's changing** in this change
+- Scoped to a specific feature or fix
+- Only contain ADDED, MODIFIED, or REMOVED sections
+- Merged into main specs when archived
+
+</Accordion>
+
+## Delta Spec Structure
+
+A delta spec uses three sections:
+
+### ADDED Requirements
+
+Brand new requirements that don't exist in the main spec:
+
+```markdown
+## ADDED Requirements
+
+### Requirement: Dark Mode Toggle
+The system SHALL provide a UI control to switch between light and dark themes.
+
+#### Scenario: User toggles dark mode
+- GIVEN the user is viewing the app in light mode
+- WHEN the user clicks the theme toggle button
+- THEN the UI switches to dark mode
+- AND the preference is saved to localStorage
+```
+
+### MODIFIED Requirements
+
+Existing requirements that are being changed:
+
+```markdown
+## MODIFIED Requirements
+
+### Requirement: Theme Support
+The system SHALL support light mode, dark mode, and system preference detection.
+
+(Previously: The system SHALL support light mode only.)
+
+**Rationale for change:** Adding dark mode support and respecting user system preferences.
+```
+
+<Note>
+Always include the previous version with "(Previously: ...)" for clarity and audit trail purposes.
+</Note>
+
+### REMOVED Requirements
+
+Requirements that are being deleted:
+
+```markdown
+## REMOVED Requirements
+
+### Requirement: Hardcoded Theme Colors
+~~The system SHALL use hardcoded theme colors defined in globals.css.~~
+
+**Rationale for removal:** Replacing with CSS custom properties for dynamic theme switching.
+```
+
+## RFC 2119 Keywords
+
+All specs (main and delta) use standardized language for requirement strength:
+
+| Keyword | Meaning | Usage |
+|---------|---------|-------|
+| **MUST / SHALL** | Absolute requirement | Non-negotiable functionality |
+| **SHOULD** | Recommended, exceptions may exist | Best practice, but alternatives allowed |
+| **MAY** | Optional | Nice-to-have features |
+
+### Examples
+
+```markdown
+### Requirement: Authentication
+The system SHALL require authentication for all protected routes.
+(Must be implemented)
+
+### Requirement: Logging
+The system SHOULD log all authentication attempts.
+(Recommended but not critical)
+
+### Requirement: Analytics
+The system MAY track user theme preferences for analytics.
+(Optional feature)
+```
+
+<Warning>
+Use SHALL/MUST for critical functionality. Overusing it makes everything seem equally important. Use SHOULD for recommendations and MAY for optional features.
+</Warning>
+
+## Given/When/Then Scenarios
+
+Delta specs use Given/When/Then format for scenarios (acceptance criteria):
+
+```markdown
+#### Scenario: System detects dark mode preference
+- GIVEN the user's OS is set to dark mode
+- AND the user has not manually set a preference in the app
+- WHEN the user loads the application
+- THEN the app displays in dark mode
+- AND no preference is stored in localStorage
+```
+
+### Structure
+
+- **GIVEN** — preconditions (state before the action)
+- **WHEN** — the action or trigger
+- **THEN** — expected outcomes (what should happen)
+- **AND** — additional preconditions or outcomes
+
+<Accordion title="Multiple Scenarios Per Requirement">
+
+A requirement typically has multiple scenarios covering different paths:
+
+```markdown
+### Requirement: Theme Persistence
+The system SHALL persist the user's theme preference.
+
+#### Scenario: Save theme on toggle
+- GIVEN the user is logged in
+- WHEN the user toggles the theme
+- THEN the preference is saved to localStorage
+- AND the preference persists after page reload
+
+#### Scenario: Anonymous user theme
+- GIVEN the user is not logged in
+- WHEN the user toggles the theme
+- THEN the preference is saved to localStorage only
+- AND the preference is not synced to the server
+
+#### Scenario: Clear saved preference
+- GIVEN the user has a saved theme preference
+- WHEN the user clicks "Reset to system default"
+- THEN the saved preference is removed from localStorage
+- AND the theme matches the OS preference
+```
+
+</Accordion>
+
+## The Archive Cycle
+
+Delta specs follow a lifecycle that maintains the source of truth:
+
+```
+1. Specs describe current behavior (main specs)
+   ↓
+2. Changes propose modifications (as delta specs)
+   ↓
+3. Implementation makes changes real (code written)
+   ↓
+4. Archive merges deltas into specs (automated merge)
+   ↓
+5. Specs now describe the new behavior (updated main specs)
+   ↓
+6. Next change builds on updated specs (cycle repeats)
+```
+
+### Archive Process
+
+When you run `/sdd-archive`, the system:
+
+1. **Reads the delta spec** from `openspec/changes/{change-name}/specs/`
+2. **Reads the main spec** from `openspec/specs/`
+3. **Applies the delta**:
+   - Adds ADDED requirements to main spec
+   - Updates MODIFIED requirements in main spec
+   - Removes REMOVED requirements from main spec
+4. **Writes updated main spec** back to `openspec/specs/`
+5. **Moves the change folder** to `openspec/changes/archive/YYYY-MM-DD-{change-name}/`
+
+<Note>
+The archive is an **AUDIT TRAIL**. Never delete or modify archived changes. They preserve the complete history of what was changed and why.
+</Note>
+
+## Real-World Example
+
+<Accordion title="Complete Example: Adding CSV Export">
+
+### Before (Main Spec)
+
+```markdown
+# Export Specification
+
+## Requirements
+
+### Requirement: JSON Export
+The system SHALL support exporting observations to JSON format.
+
+#### Scenario: Export to JSON
+- GIVEN the user has observations
+- WHEN the user clicks "Export as JSON"
+- THEN a JSON file is downloaded
+```
+
+### During Change (Delta Spec)
+
+```markdown
+# Export Specification (Delta)
+
+## ADDED Requirements
+
+### Requirement: CSV Export
+The system SHALL support exporting observations to CSV format.
+
+#### Scenario: Export to CSV
+- GIVEN the user has observations
+- WHEN the user clicks "Export as CSV"
+- THEN a CSV file is downloaded
+- AND column headers match observation fields
+- AND data rows contain all observations
+
+#### Scenario: Empty observations CSV
+- GIVEN the user has no observations
+- WHEN the user clicks "Export as CSV"
+- THEN a CSV file is downloaded with headers only
+- AND the file contains no data rows
+
+## MODIFIED Requirements
+
+### Requirement: Export Formats
+The system SHALL support exporting observations to JSON and CSV formats.
+
+(Previously: The system SHALL support exporting observations to JSON format.)
+
+**Rationale:** Adding CSV for spreadsheet compatibility.
+```
+
+### After Archive (Merged Main Spec)
+
+```markdown
+# Export Specification
+
+## Requirements
+
+### Requirement: Export Formats
+The system SHALL support exporting observations to JSON and CSV formats.
+
+#### Scenario: Export to JSON
+- GIVEN the user has observations
+- WHEN the user clicks "Export as JSON"
+- THEN a JSON file is downloaded
+
+### Requirement: CSV Export
+The system SHALL support exporting observations to CSV format.
+
+#### Scenario: Export to CSV
+- GIVEN the user has observations
+- WHEN the user clicks "Export as CSV"
+- THEN a CSV file is downloaded
+- AND column headers match observation fields
+- AND data rows contain all observations
+
+#### Scenario: Empty observations CSV
+- GIVEN the user has no observations
+- WHEN the user clicks "Export as CSV"
+- THEN a CSV file is downloaded with headers only
+- AND the file contains no data rows
+```
+
+### Archived Change
+
+The complete change moves to:
+```
+openspec/changes/archive/2026-03-04-add-csv-export/
+├── proposal.md
+├── specs/
+│   └── export/spec.md    ← Delta spec preserved
+├── design.md
+├── tasks.md
+└── verify-report.md
+```
+
+</Accordion>
+
+## Domain Organization
+
+Specs are organized by domain (logical grouping):
+
+```
+openspec/specs/
+├── auth/spec.md         ← Authentication & authorization
+├── export/spec.md       ← Data export functionality
+├── ui/spec.md           ← User interface components
+└── api/spec.md          ← API endpoints
+```
+
+Delta specs mirror this structure:
+
+```
+openspec/changes/add-csv-export/specs/
+└── export/spec.md       ← Only the export domain changes
+```
+
+<Note>
+Delta specs only include domains that are being modified. If a change only affects the export domain, only `export/spec.md` exists in the delta.
+</Note>
+
+## Why Delta Specs Work
+
+### Benefits
+
+1. **Maintainability** — Only describe what's changing, not the entire system
+2. **Clarity** — Clear before/after comparison for reviews
+3. **Audit trail** — Complete history of changes preserved in archive
+4. **Merge safety** — Automated merge process reduces conflicts
+5. **Scoped changes** — Each change is self-contained
+
+### Comparison to Traditional Approaches
+
+| Approach | Pros | Cons |
+|----------|------|------|
+| **Full spec duplication** | Easy to read in isolation | Massive duplication, merge conflicts, unclear what changed |
+| **Inline comments** | All in one file | Hard to track, clutters main spec, no clear archive |
+| **Delta specs** | Clear changes, automated merge, audit trail | Requires understanding the pattern |
+
+## Working with Delta Specs
+
+### Creating Delta Specs
+
+The `sdd-spec` sub-agent creates delta specs automatically:
+
+```
+/sdd-new add-oauth
+→ Proposal created
+→ Delta specs created in openspec/changes/add-oauth/specs/
+```
+
+### Reviewing Delta Specs
+
+Before approving implementation:
+
+1. Read the proposal to understand intent
+2. Review each domain's delta spec
+3. Check that ADDED requirements are complete
+4. Verify MODIFIED requirements include "(Previously: ...)" text
+5. Confirm REMOVED requirements have rationale
+
+### Implementing from Delta Specs
+
+The `sdd-apply` sub-agent uses delta specs as acceptance criteria:
+
+```
+FOR EACH TASK:
+├── Read the task description
+├── Read relevant spec scenarios (these are acceptance criteria)
+├── Implement code that satisfies the scenarios
+└── Mark task complete
+```
+
+<Warning>
+Delta specs are **acceptance criteria**, not implementation instructions. The design.md provides the HOW, while delta specs provide the WHAT.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Complete Workflow" icon="diagram-project" href="/guides/workflow">
+    See how delta specs fit in the full workflow
+  </Card>
+  <Card title="TDD Workflow" icon="vial-circle-check" href="/guides/tdd-workflow">
+    Learn how specs become tests
+  </Card>
+  <Card title="Sub-Agents" icon="users" href="/sub-agents/architecture">
+    Explore the spec writer sub-agent
+  </Card>
+  <Card title="Commands" icon="terminal" href="/commands/overview">
+    Command reference for spec workflow
+  </Card>
+</CardGroup>
